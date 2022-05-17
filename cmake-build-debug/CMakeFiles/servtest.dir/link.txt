@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/servtest.dir/main.cpp.o  -o servtest  -lmodbus -lmodbus 
