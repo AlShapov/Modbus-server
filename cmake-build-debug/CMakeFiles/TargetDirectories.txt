@@ -1,3 +1,3 @@
-/mnt/c/Users/sassh/CLionProjects/servtest/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/mnt/c/Users/sassh/CLionProjects/servtest/cmake-build-debug/CMakeFiles/edit_cache.dir
-/mnt/c/Users/sassh/CLionProjects/servtest/cmake-build-debug/CMakeFiles/servtest.dir
+/mnt/c/Users/Л/CLionProjects/Modbas-server/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/Л/CLionProjects/Modbas-server/cmake-build-debug/CMakeFiles/edit_cache.dir
+/mnt/c/Users/Л/CLionProjects/Modbas-server/cmake-build-debug/CMakeFiles/servtest.dir

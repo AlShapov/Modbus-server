@@ -6,9 +6,9 @@
 
 #IncludeRegexTransform: 
 
-/mnt/c/Users/sassh/CLionProjects/servtest/Const.h
+/mnt/c/Users/Л/CLionProjects/Modbas-server/Const.h
 
-/mnt/c/Users/sassh/CLionProjects/servtest/main.cpp
+/mnt/c/Users/Л/CLionProjects/Modbas-server/main.cpp
 stdio.h
 -
 unistd.h
@@ -21,8 +21,10 @@ errno.h
 -
 modbus.h
 -
+iostream
+-
 Const.h
-/mnt/c/Users/sassh/CLionProjects/servtest/Const.h
+/mnt/c/Users/Л/CLionProjects/Modbas-server/Const.h
 
 /usr/include/modbus/modbus-rtu.h
 modbus.h

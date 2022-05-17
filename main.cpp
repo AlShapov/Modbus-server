@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <modbus.h>
+#include <iostream>
 
 #include "Const.h"
 
@@ -12,6 +13,7 @@ int main(int argc, char*argv[])
     int s = -1;
     modbus_t *ctx;
     modbus_mapping_t *mb_mapping;
+    modbus_mapping_t *mb_mapping2;
     int rc;
     int i;
     uint8_t *query;
@@ -23,11 +25,7 @@ int main(int argc, char*argv[])
 
     //modbus_set_debug(ctx, TRUE);
 
-    mb_mapping = modbus_mapping_new_start_address(
-            UT_BITS_ADDRESS, UT_BITS_NB,
-            UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB,
-            UT_REGISTERS_ADDRESS, UT_REGISTERS_NB_MAX,
-            UT_INPUT_REGISTERS_ADDRESS, UT_INPUT_REGISTERS_NB);
+    mb_mapping = modbus_mapping_new(0,0,0xFFFF,0);
     if (mb_mapping == NULL) {
         fprintf(stderr, "Failed to allocate the mapping: %s\n",
                 modbus_strerror(errno));
@@ -35,25 +33,20 @@ int main(int argc, char*argv[])
         return -1;
     }
 
-    modbus_set_bits_from_bytes(mb_mapping->tab_input_bits, 0, UT_INPUT_BITS_NB,
-                               UT_INPUT_BITS_TAB);
-
-    modbus_set_bits_from_bytes(mb_mapping->tab_bits, 0, UT_BITS_NB,
-                               UT_BITS_TAB);
-
-    for (i=0; i < UT_INPUT_REGISTERS_NB; i++) {
-        mb_mapping->tab_input_registers[i] = UT_INPUT_REGISTERS_TAB[i];
+    int nm_reg = 0;
+    for (i=0; i < sizeof(UT_ADDRESS_BUFF_TAB) / sizeof(uint16_t); i++) {
+        for (int j=0; j < NB_REGISTERS_BUFF[i]; j++){
+            mb_mapping->tab_registers[UT_ADDRESS_BUFF_TAB[i] + j] = UT_REGISTERS_TAB[nm_reg];
+            nm_reg++;
+        }
     }
 
-    for (i=0; i < UT_REGISTERS_NB; i++) {
-        mb_mapping->tab_registers[i] = UT_REGISTERS_TAB[i];
-    }
 
     s = modbus_tcp_listen(ctx, 1);
     modbus_tcp_accept(ctx, &s);
 
-
     for (;;) {
+
         do {
             rc = modbus_receive(ctx, query);
         } while (rc == 0);
