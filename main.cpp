@@ -21,6 +21,8 @@ int main(int argc, char*argv[])
     query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
     header_length = modbus_get_header_length(ctx);
 
+    //modbus_set_debug(ctx, TRUE);
+
     mb_mapping = modbus_mapping_new_start_address(
             UT_BITS_ADDRESS, UT_BITS_NB,
             UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB,
