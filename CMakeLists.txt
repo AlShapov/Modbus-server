@@ -16,5 +16,5 @@ link_libraries(modbus yaml-cpp)
 add_executable(servtest main.cpp)
 target_link_libraries(servtest modbus yaml-cpp)
 
-target_compile_options(servtest PRIVATE -fsanitize=address)
-target_link_options(servtest PRIVATE -fsanitize=address)
+target_compile_options(servtest PRIVATE -fsanitize=thread)
+target_link_options(servtest PRIVATE -fsanitize=thread)
