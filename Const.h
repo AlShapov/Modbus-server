@@ -1,3 +1,5 @@
+#define SERVER_ID         17
+
 const uint16_t UT_BITS_ADDRESS = 0x130;
 const uint16_t UT_BITS_NB = 0x25;
 const uint8_t UT_BITS_TAB[] = { 0xC6, 0x6B, 0xB2, 0x0E, 0x1B };

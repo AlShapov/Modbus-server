@@ -8,6 +8,11 @@
 
 #include "Const.h"
 
+enum {
+    TCP,
+    RTU
+};
+
 int main(int argc, char*argv[])
 {
     int s = -1;
@@ -15,11 +20,31 @@ int main(int argc, char*argv[])
     modbus_mapping_t *mb_mapping;
     int rc;
     int i;
+    int use_backend;
     uint8_t *query;
     int header_length;
 
-    ctx = modbus_new_tcp("127.0.0.1", 1502);
-    query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
+    if (argc > 1) {
+        if (strcmp(argv[1], "tcp") == 0) {
+            use_backend = TCP;
+        } else if (strcmp(argv[1], "rtu") == 0) {
+            use_backend = RTU;
+        } else {
+            printf("Usage:\n  %s [tcp|rtu] - Modbus server for unit testing\n\n", argv[0]);
+            return -1;
+        }
+    } else {
+        use_backend = TCP;
+    }
+
+    if (use_backend == TCP) {
+        ctx = modbus_new_tcp("127.0.0.1", 1502);
+        query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
+    } else {
+        ctx = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
+        modbus_set_slave(ctx, SERVER_ID);
+        query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
+    }
     header_length = modbus_get_header_length(ctx);
 
     //modbus_set_debug(ctx, TRUE);
@@ -38,8 +63,17 @@ int main(int argc, char*argv[])
         }
     }
 
-    s = modbus_tcp_listen(ctx, 1);
-    modbus_tcp_accept(ctx, &s);
+    if (use_backend == TCP) {
+        s = modbus_tcp_listen(ctx, 1);
+        modbus_tcp_accept(ctx, &s);
+    } else {
+        rc = modbus_connect(ctx);
+        if (rc == -1) {
+            fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
+            modbus_free(ctx);
+            return -1;
+        }
+    }
 
     for (;;) {
         do {
@@ -87,6 +121,7 @@ int main(int argc, char*argv[])
                     }
                     break;
                 case 6:
+
                     break;
                 case 7:
                     if (query[header_length+9] == 64)
@@ -108,11 +143,14 @@ int main(int argc, char*argv[])
 
     printf("Quit the loop: %s\n", modbus_strerror(errno));
 
-    if (s != -1) {
-        close(s);
+    if (use_backend == TCP) {
+        if (s != -1) {
+            close(s);
+        }
     }
     modbus_mapping_free(mb_mapping);
     free(query);
-
+    modbus_close(ctx);
+    modbus_free(ctx);
     return 0;
 }
