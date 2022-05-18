@@ -33,11 +33,9 @@ int main(int argc, char*argv[])
         return -1;
     }
 
-    int nm_reg = 0;
     for (i=0; i < sizeof(UT_ADDRESS_BUFF_TAB) / sizeof(uint16_t); i++) {
         for (int j=0; j < NB_REGISTERS_BUFF[i]; j++){
-            mb_mapping->tab_registers[UT_ADDRESS_BUFF_TAB[i] + j] = UT_REGISTERS_TAB[nm_reg];
-            nm_reg++;
+            mb_mapping->tab_registers[UT_ADDRESS_BUFF_TAB[i] + j] = UT_REGISTERS_TAB[i][j];
         }
     }
 
@@ -54,6 +52,9 @@ int main(int argc, char*argv[])
         if (rc == -1 && errno != EMBBADCRC) {
             break;
         }
+
+
+
 
         rc = modbus_reply(ctx, query, rc, mb_mapping);
         if (rc == -1) {
