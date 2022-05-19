@@ -6,8 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/mnt/c/Users/Л/CLionProjects/Modbas-server/Const.h
-
 /mnt/c/Users/Л/CLionProjects/Modbas-server/main.cpp
 stdio.h
 -
@@ -21,10 +19,12 @@ errno.h
 -
 modbus.h
 -
+yaml.h
+-
 iostream
 -
-Const.h
-/mnt/c/Users/Л/CLionProjects/Modbas-server/Const.h
+fstream
+-
 
 /usr/include/modbus/modbus-rtu.h
 modbus.h
@@ -51,4 +51,30 @@ modbus-tcp.h
 /usr/include/modbus/modbus-tcp.h
 modbus-rtu.h
 /usr/include/modbus/modbus-rtu.h
+
+/usr/include/yaml-cpp/yaml.h
+yaml-cpp/parser.h
+/usr/include/yaml-cpp/yaml-cpp/parser.h
+yaml-cpp/emitter.h
+/usr/include/yaml-cpp/yaml-cpp/emitter.h
+yaml-cpp/emitterstyle.h
+/usr/include/yaml-cpp/yaml-cpp/emitterstyle.h
+yaml-cpp/stlemitter.h
+/usr/include/yaml-cpp/yaml-cpp/stlemitter.h
+yaml-cpp/exceptions.h
+/usr/include/yaml-cpp/yaml-cpp/exceptions.h
+yaml-cpp/node/node.h
+/usr/include/yaml-cpp/yaml-cpp/node/node.h
+yaml-cpp/node/impl.h
+/usr/include/yaml-cpp/yaml-cpp/node/impl.h
+yaml-cpp/node/convert.h
+/usr/include/yaml-cpp/yaml-cpp/node/convert.h
+yaml-cpp/node/iterator.h
+/usr/include/yaml-cpp/yaml-cpp/node/iterator.h
+yaml-cpp/node/detail/impl.h
+/usr/include/yaml-cpp/yaml-cpp/node/detail/impl.h
+yaml-cpp/node/parse.h
+/usr/include/yaml-cpp/yaml-cpp/node/parse.h
+yaml-cpp/node/emit.h
+/usr/include/yaml-cpp/yaml-cpp/node/emit.h
 

@@ -8,7 +8,10 @@ set(LINK_DIR /usr/lib)
 
 include_directories(${INC_DIR})
 link_directories(${LINK_DIR})
-link_libraries(modbus)
+
+set(INC_DIR /usr/include/yaml-cpp)
+include_directories(${INC_DIR})
+link_libraries(modbus yaml-cpp)
 
 add_executable(servtest main.cpp)
-target_link_libraries(servtest modbus)
+target_link_libraries(servtest modbus yaml-cpp)

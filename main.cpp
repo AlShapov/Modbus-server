@@ -4,9 +4,58 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <modbus.h>
+#include <yaml.h>
 #include <iostream>
+#include <fstream>
 
-#include "Const.h"
+#define SERVER_ID         17
+
+// Перевод 16-ричного числа в строку
+std::string hex_to_str(uint16_t H){
+    std::string S = "0x";
+    int z = 0;
+    int Por;
+    int Ost = H;
+    int St = 16*16*16;
+    for (int i=0; i<4; i++){
+        Por = Ost / St;
+        Ost = Ost % St;
+        St = St / 16;
+        if (Por)
+            z = 1;
+        switch (Por) {
+            case (0):
+                if (z)
+                    S += "0";
+                break;
+            case (10):
+                S += "A";
+                break;
+            case (11):
+                S += "B";
+                break;
+            case (12):
+                S += "C";
+                break;
+            case (13):
+                S += "D";
+                break;
+            case (14):
+                S += "E";
+                break;
+            case (15):
+                S += "F";
+                break;
+            default:
+                S += std::to_string(Por);
+                break;
+        }
+    }
+    if (S == "0x")
+        S += "0";
+
+    return S;
+}
 
 enum {
     TCP,
@@ -23,6 +72,8 @@ int main(int argc, char*argv[])
     int use_backend;
     uint8_t *query;
     int header_length;
+    std::string fname = "../config.yaml";
+    YAML::Node config = YAML::LoadFile(fname);
 
     if (argc > 1) {
         if (strcmp(argv[1], "tcp") == 0) {
@@ -57,9 +108,10 @@ int main(int argc, char*argv[])
         return -1;
     }
 
-    for (i=0; i < sizeof(UT_ADDRESS_BUFF_TAB) / sizeof(uint16_t); i++) {
-        for (int j = 0; j < NB_REGISTERS_BUFF[i]; j++) {
-            mb_mapping->tab_registers[UT_ADDRESS_BUFF_TAB[i] + j] = UT_REGISTERS_TAB[i][j];
+    // Инициализация регистров из файла
+    for (i=0; i < config.size(); i++) { // Количество буферов
+        for (int j = 0; j < config[i].begin()->second.size(); j++) { // Количество в них регистров
+            mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
         }
     }
 
@@ -76,6 +128,7 @@ int main(int argc, char*argv[])
     }
 
     for (;;) {
+        // Пропуск пустых запросов серверу
         do {
             rc = modbus_receive(ctx, query);
         } while (rc == 0);
@@ -83,63 +136,77 @@ int main(int argc, char*argv[])
             break;
         }
 
+        // Использование буфера ТУ - команды управления
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == 0x0D60) {
             switch(query[header_length+7]) {
-                case 1:
-                    if (query[header_length+9] == 64 && !((mb_mapping->tab_registers[0x0D40]>>7) % 2)) {
-                        mb_mapping->tab_registers[0x0D40] += 1<<7;
-                    } else if (query[header_length+9] == 32 && (mb_mapping->tab_registers[0x0D40]>>7) % 2) {
-                        mb_mapping->tab_registers[0x0D40] -= 1<<7;
+                case 1: // БВ вкл/откл
+                    if (query[header_length+9] == 0x40) {
+                        mb_mapping->tab_registers[0x0D40] |= 0x80;
+                    } else if (query[header_length+9] == 0x20) {
+                        mb_mapping->tab_registers[0x0D40] &= 0xFF7F;
                     }
                     break;
-                case 2:
-                    if (query[header_length+9] == 64 && !((mb_mapping->tab_registers[0x0D40]>>5) % 2)) {
-                        mb_mapping->tab_registers[0x0D40] += 1<<5;
-                    } else if (query[header_length+9] == 32 && (mb_mapping->tab_registers[0x0D40]>>5) % 2) {
-                        mb_mapping->tab_registers[0x0D40] -= 1<<5;
+                case 2: // ОР вкл/откл
+                    if (query[header_length+9] == 0x40) {
+                        mb_mapping->tab_registers[0x0D40] |= 0x20;
+                    } else if (query[header_length+9] == 0x20) {
+                        mb_mapping->tab_registers[0x0D40] &= 0xFFDF;
                     }
                     break;
-                case 3:
-                    if (query[header_length+9] == 64 && !((mb_mapping->tab_registers[0x0D40]>>3) % 2)) {
-                        mb_mapping->tab_registers[0x0D40] += 1<<3;
-                    } else if (query[header_length+9] == 32 && (mb_mapping->tab_registers[0x0D40]>>3) % 2) {
-                        mb_mapping->tab_registers[0x0D40] -= 1<<3;
+                case 3: // ВЭ вкл/откл
+                    if (query[header_length+9] == 0x40) {
+                        mb_mapping->tab_registers[0x0D40] |= 0x8;
+                    } else if (query[header_length+9] == 0x20) {
+                        mb_mapping->tab_registers[0x0D40] &= 0xFFF7;
                     }
                     break;
-                case 4:
-                    if (query[header_length+9] == 64 && !((mb_mapping->tab_registers[0x0D41]>>2) % 2)) {
-                        mb_mapping->tab_registers[0x0D41] += 1<<2;
-                    } else if (query[header_length+9] == 32 && (mb_mapping->tab_registers[0x0D41]>>2) % 2) {
-                        mb_mapping->tab_registers[0x0D41] -= 1<<2;
+                case 4: // АПВ БВ ввести/вывести
+                    if (query[header_length+9] == 0x40) {
+                        mb_mapping->tab_registers[0x0D41] |= 0x4;
+                    } else if (query[header_length+9] == 0x20) {
+                        mb_mapping->tab_registers[0x0D41] &= 0xFFFB;
                     }
                     break;
-                case 5:
-                    if (query[header_length+9] == 64 && !((mb_mapping->tab_registers[0x0D40]>>10) % 2)) {
-                        mb_mapping->tab_registers[0x0D40] += 1<<10;
-                    } else if (query[header_length+9] == 32 && !((mb_mapping->tab_registers[0x0D41]>>11) % 2)) {
-                        mb_mapping->tab_registers[0x0D41] -= 1<<11;
+                case 5: // Вкл уставку 2 / Вкл уставку 1 (взаимоисключение? добавить if в оба на проверку второго)
+                    if (query[header_length+9] == 0x40) {
+                        mb_mapping->tab_registers[0x0D40] |= 0x400;
+                    } else if (query[header_length+9] == 0x20) {
+                        mb_mapping->tab_registers[0x0D41] |= 0x800;
                     }
                     break;
-                case 6:
-
+                case 6: // Квитировать
+                    if (query[header_length+9] == 0x40) {
+                        mb_mapping->tab_registers[0x0D40] &= 0x2FFF;
+                        mb_mapping->tab_registers[0x0D41] &= 0xFFFC;
+                        mb_mapping->tab_registers[0x0D42] = 0;
+                        mb_mapping->tab_registers[0x0D43] = 0;
+                        mb_mapping->tab_registers[0x0D44] = 0;
+                    }
                     break;
-                case 7:
-                    if (query[header_length+9] == 64)
+                case 7: // Сброс накопительной инф-ии
+                    if (query[header_length+9] == 0x40)
                         for (i=0; i < 12; i++)
                             mb_mapping->tab_registers[0x0CC0 + i] = 0;
                     break;
-                case 8:
+                case 8: // Резерв
                     break;
             }
         }
-
-
 
         rc = modbus_reply(ctx, query, rc, mb_mapping);
         if (rc == -1) {
             break;
         }
     }
+
+    // Сохранение регистров обратно в файл
+    for (i=0; i < config.size(); i++) {
+        for (int j = 0; j < config[i].begin()->second.size(); j++) {
+            config[i].begin()->second[j] = hex_to_str(mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j]);
+        }
+    }
+    std::ofstream fout(fname);
+    fout << config;
 
     printf("Quit the loop: %s\n", modbus_strerror(errno));
 
