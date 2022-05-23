@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/mnt/c/Users/Л/CLionProjects/Modbas-server/main.cpp" "/mnt/c/Users/Л/CLionProjects/Modbas-server/cmake-build-debug/CMakeFiles/servtest.dir/main.cpp.o"
+  "/mnt/c/Users/sassh/CLionProjects/Modbas-server/main.cpp" "/mnt/c/Users/sassh/CLionProjects/Modbas-server/cmake-build-debug/CMakeFiles/servtest.dir/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
