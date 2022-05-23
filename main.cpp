@@ -97,9 +97,7 @@ int main(int argc, char*argv[])
         query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
     }
     header_length = modbus_get_header_length(ctx);
-
-    //modbus_set_debug(ctx, TRUE);
-
+    modbus_set_debug(ctx, TRUE);
     mb_mapping = modbus_mapping_new(0,0,0xFFFF,0);
     if (mb_mapping == NULL) {
         fprintf(stderr, "Failed to allocate the mapping: %s\n",
@@ -114,7 +112,7 @@ int main(int argc, char*argv[])
             mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
         }
     }
-
+    std::cout<<s;
     if (use_backend == TCP) {
         s = modbus_tcp_listen(ctx, 1);
         modbus_tcp_accept(ctx, &s);
@@ -136,6 +134,12 @@ int main(int argc, char*argv[])
             break;
         }
 
+        // Отправка ответа
+        rc = modbus_reply(ctx, query, rc, mb_mapping);
+        if (rc == -1) {
+            break;
+        }
+
         // Использование буфера ТУ - команды управления
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == 0x0D60) {
             switch(query[header_length+7]) {
@@ -144,6 +148,15 @@ int main(int argc, char*argv[])
                         mb_mapping->tab_registers[0x0D40] |= 0x80;
                     } else if (query[header_length+9] == 0x20) {
                         mb_mapping->tab_registers[0x0D40] &= 0xFF7F;
+                        // Изменение буфера накоп. информации
+                        for (i=0; i < 4; i++)
+                            mb_mapping->tab_registers[0x0CC0 + i] = mb_mapping->tab_registers[0x0C80 + i];
+                        mb_mapping->tab_registers[0x0CC4]++;
+                        // аварийные отключения
+                        // выработанный ресурс
+                        // сумма макс токов отключения
+                        mb_mapping->tab_registers[0x0CCA] = mb_mapping->tab_registers[0x0C84];
+                        mb_mapping->tab_registers[0x0CCB] = mb_mapping->tab_registers[0x0C85];
                     }
                     break;
                 case 2: // ОР вкл/откл
@@ -191,11 +204,20 @@ int main(int argc, char*argv[])
                 case 8: // Резерв
                     break;
             }
+
+            // Изменение буфера ТС из-за статусов
+            if (query[header_length+7] != 7  && query[header_length+7] != 8){
+                for(i=0; i < 6; i++)
+                    mb_mapping->tab_registers[0x0AFE + i] = mb_mapping->tab_registers[0x0D40 + i];
+                for(i=0; i < 4; i++)
+                    mb_mapping->tab_registers[0x0B04 + i] = mb_mapping->tab_registers[0x0C80 + i];
+            }
         }
 
-        rc = modbus_reply(ctx, query, rc, mb_mapping);
-        if (rc == -1) {
-            break;
+        // Обновление буфера измерений из-за коррекции времени
+        if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == 0x024C) {
+            for (i=0; i < 4; i++)
+                mb_mapping->tab_registers[0x0C80 + i] = mb_mapping->tab_registers[0x024C + i];
         }
     }
 
@@ -207,8 +229,6 @@ int main(int argc, char*argv[])
     }
     std::ofstream fout(fname);
     fout << config;
-
-    printf("Quit the loop: %s\n", modbus_strerror(errno));
 
     if (use_backend == TCP) {
         if (s != -1) {
