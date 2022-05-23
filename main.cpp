@@ -18,10 +18,10 @@ enum {
 
 pthread_mutex_t timeMut;
 
-typedef struct threadData{
+typedef struct{
     int use_backend;
-    modbus_mapping_t *&mapping;
-};
+    modbus_mapping_t *mapping;
+}threadData;
 
 
 void * times(void *&mapping)
@@ -114,14 +114,10 @@ std::string hex_to_str(uint16_t H){
     return S;
 }
 
-int serv(void *&mapping) {
-    modbus_mapping_t *mb_mapping = (modbus_mapping_t *) mapping;
-
-    /*for (int i = 0x0D40; i < 0x0D46; i++)
-    {
-        std::cout << "R:" << mb_mapping->tab_registers[i] << std::endl;
-    }*/
-
+int serv(void* thrData) {
+    threadData *data = (threadData*) thrData;
+    modbus_mapping_t* mb_mapping = data->mapping;
+    int use_backend = data->use_backend;
     int s = -1;
     int rc;
     int i;
@@ -129,34 +125,35 @@ int serv(void *&mapping) {
     int header_length;
     modbus_t *ctx;
 
-
-
-    //if (data->use_backend == TCP) {
-    ctx = modbus_new_tcp("127.0.0.1", 1502);
-    query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
-    //} else {
-    //data->ctx = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
-    //modbus_set_slave(data->ctx, SERVER_ID);
-    //query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
-    //}
+    if (use_backend == TCP) {
+        ctx = modbus_new_tcp("127.0.0.1", 1502);
+        query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
+    } else {
+        ctx = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
+        modbus_set_slave(ctx, SERVER_ID);
+        query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
+    }
     header_length = modbus_get_header_length(ctx);
 
     //modbus_set_debug(ctx, TRUE);
 
-    //if (data->use_backend == TCP) {
-    s = modbus_tcp_listen(ctx, 1);
-    std::cout << "check12" << std::endl;
-    modbus_tcp_accept(ctx, &s);
-    //} else {
-    //rc = modbus_connect(data->ctx);
-    //if (rc == -1) {
-    //fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
-    //modbus_free(data->ctx);
-    //return -1;
-    //}
-    //}
+    if (use_backend == TCP) {
+        s = modbus_tcp_listen(ctx, 1);
+        //std::cout << "check12" << std::endl;
+        modbus_tcp_accept(ctx, &s);
+    }
+    else
+    {
+        rc = modbus_connect(ctx);
+        if (rc == -1)
+        {
+            fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
+            modbus_free(ctx);
+            return -1;
+        }
+    }
 
-    std::cout << "check2" << std::endl;
+    //std::cout << "check2" << std::endl;
 
     for (;;) {
         // Пропуск пустых запросов серверу
@@ -300,20 +297,24 @@ int main(int argc, char*argv[])
         }
     }
 
-    threadData* data;
-    data->mapping = &*mb_mapping;
+    threadData* data = (threadData*) malloc(sizeof(threadData));
+    data->mapping = mb_mapping;
     data->use_backend = use_backend;
 
     pthread_t thread1;
-    pthread_create(&thread1, NULL, reinterpret_cast<void *(*)(void *)>(serv), &mb_mapping);
+    pthread_create(&thread1, NULL, reinterpret_cast<void *(*)(void *)>(serv), *&data);
 
     pthread_t thread2;
     pthread_create(&thread2, NULL, reinterpret_cast<void *(*)(void *)>(times), &mb_mapping);
 
+    pthread_t thread3;
+    pthread_create(&thread3, NULL, reinterpret_cast<void *(*)(void *)>(serv), *&data);
+
     pthread_join(thread1, NULL);
+    pthread_join(thread3, NULL);
     pthread_detach(thread2);
 
-    std::cout << mb_mapping->tab_registers[0x0D40] << std::endl;
+    std::cout << mb_mapping->tab_registers[0x0C81] << std::endl;
 
     // Сохранение регистров обратно в файл
     for (i=0; i < config.size(); i++) {
