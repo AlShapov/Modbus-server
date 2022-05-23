@@ -69,11 +69,13 @@ int main(int argc, char*argv[])
     modbus_mapping_t *mb_mapping;
     int rc;
     int i;
+    int j;
     int use_backend;
     uint8_t *query;
     int header_length;
     std::string fname = "../config.yaml";
     YAML::Node config = YAML::LoadFile(fname);
+    int nb_srez = 0;
 
     if (argc > 1) {
         if (strcmp(argv[1], "tcp") == 0) {
@@ -97,7 +99,7 @@ int main(int argc, char*argv[])
         query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
     }
     header_length = modbus_get_header_length(ctx);
-    modbus_set_debug(ctx, TRUE);
+
     mb_mapping = modbus_mapping_new(0,0,0xFFFF,0);
     if (mb_mapping == NULL) {
         fprintf(stderr, "Failed to allocate the mapping: %s\n",
@@ -112,7 +114,11 @@ int main(int argc, char*argv[])
             mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
         }
     }
-    std::cout<<s;
+    for(i=0; i < 6; i++)
+        mb_mapping->tab_registers[0x0AFE + i] = mb_mapping->tab_registers[0x0D40 + i];
+    for(i=0; i < 4; i++)
+        mb_mapping->tab_registers[0x0B04 + i] = mb_mapping->tab_registers[0x0C80 + i];
+
     if (use_backend == TCP) {
         s = modbus_tcp_listen(ctx, 1);
         modbus_tcp_accept(ctx, &s);
@@ -205,13 +211,38 @@ int main(int argc, char*argv[])
                     break;
             }
 
-            // Изменение буфера ТС из-за статусов
-            if (query[header_length+7] != 7  && query[header_length+7] != 8){
-                for(i=0; i < 6; i++)
-                    mb_mapping->tab_registers[0x0AFE + i] = mb_mapping->tab_registers[0x0D40 + i];
-                for(i=0; i < 4; i++)
-                    mb_mapping->tab_registers[0x0B04 + i] = mb_mapping->tab_registers[0x0C80 + i];
+            if (nb_srez<16){
+                // Изменение буфера ТС из-за статусов - создание среза
+                if (query[header_length+7] != 7  && query[header_length+7] != 8){
+                    for(i=0; i < 6; i++)
+                        mb_mapping->tab_registers[0x0AFE + 10 * (nb_srez+1) + i] = mb_mapping->tab_registers[0x0D40 + i];
+                    for(i=0; i < 4; i++)
+                        mb_mapping->tab_registers[0x0B04 + 10 * (nb_srez+1) + i] = mb_mapping->tab_registers[0x0C80 + i];
+                }
+                nb_srez++;
+            } else {
+                mb_mapping->tab_registers[0x0AFD] |= 0x0002;
             }
+        }
+
+        // Запись в буфер квитирования
+        if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == 0x0AFC) {
+            if (query[header_length+7] % 2){
+                if (nb_srez) {
+                    for (i = 0; i < nb_srez; i++)
+                        for (j = 0; j < 10; j++)
+                            mb_mapping->tab_registers[0x0AFE + 10 * i + j] = mb_mapping->tab_registers[0x0AFE + 10 * (i+1) + j];
+                    nb_srez--;
+                }
+            }
+            if ((query[header_length+7] >> 1) % 2){
+                mb_mapping->tab_registers[0x0AFD] &= 0xFFFD;
+            }
+        }
+        if(nb_srez){
+            mb_mapping->tab_registers[0x0AFD] |= 0x0001;
+        } else {
+            mb_mapping->tab_registers[0x0AFD] &= 0xFFFE;
         }
 
         // Обновление буфера измерений из-за коррекции времени
