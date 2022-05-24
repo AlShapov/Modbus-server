@@ -25,6 +25,8 @@ iostream
 -
 fstream
 -
+pthread.h
+-
 
 /usr/include/modbus/modbus-rtu.h
 modbus.h
