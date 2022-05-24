@@ -84,8 +84,9 @@ void *ctrl_order(void *&mapping){
 void *sim_sensor(void *&mapping){
     modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
     int num;
-    for (;;){
-        std::cout << "Какой буфер? \n1.Буфер статуса\n2.Буфер ВЫЗОВ\n3.Буфер защит ЦЗА\n";
+    int en = 1;
+    while (en){
+        std::cout << "Какой буфер? \n1.Буфер статуса\n2.Буфер ВЫЗОВ\n3.Буфер защит ЦЗА\n0.Выключение сервера\n";
         std::cin >> num;
         switch(num){
             case 1:
@@ -320,6 +321,10 @@ void *sim_sensor(void *&mapping){
                         break;
                 }
                 break;
+            case 0:
+                mb_mapping->tab_registers[0x0D39] = 0x0;
+                en = 0;
+                break;
             default:
                 std::cout << "Не существует.\n";
                 break;
@@ -385,15 +390,14 @@ int serv(void* thrData) {
     uint8_t *query;
     int header_length;
     int nb_srez = 0;
+    header_length = modbus_get_header_length(ctx);
 
     if (use_backend == TCP) {
         query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
     } else {
         query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
     }
-    header_length = modbus_get_header_length(ctx);
 
-    //std::cout << "check2" << std::endl;
 
     for (;;) {
         // Пропуск пустых запросов серверу
@@ -523,9 +527,8 @@ int serv(void* thrData) {
         }
     }
 
-    //modbus_close(ctx);
-    //modbus_free(ctx);
     free(query);
+    return 0;
 }
 
 
@@ -534,10 +537,9 @@ int main(int argc, char*argv[])
 {
     int s = -1;
     modbus_mapping_t *mb_mapping;
-    int i;
     int rc;
     int use_backend;
-    modbus_t *ctx;
+    modbus_t **ctx = (modbus_t**) malloc(10*sizeof(modbus_t*));
     std::string fname = "../config.yaml";
     YAML::Node config = YAML::LoadFile(fname);
     if(!(pthread_mutex_init(&timeMut, NULL)))
@@ -557,10 +559,13 @@ int main(int argc, char*argv[])
     }
 
     if (use_backend == TCP) {
-        ctx = modbus_new_tcp("127.0.0.1", 1502);
+        for (int i = 0; i < 10; i++)
+            ctx[i] = modbus_new_tcp("127.0.0.1", 1502);
     } else {
-        ctx = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
-        modbus_set_slave(ctx, SERVER_ID);
+        for (int i = 0; i < 10; i++) {
+            ctx[i] = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
+            modbus_set_slave(ctx[i], SERVER_ID);
+        }
     }
     // Память для мапа
     mb_mapping = modbus_mapping_new(0,0,0xFFFF,0);
@@ -571,70 +576,83 @@ int main(int argc, char*argv[])
     }
 
     // Инициализация регистров из файла
-    for (i=0; i < config.size(); i++) { // Количество буферов
+    for (int i=0; i < config.size(); i++) { // Количество буферов
         for (int j = 0; j < config[i].begin()->second.size(); j++) { // Количество в них регистров
             mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
         }
     }
-    for(i=0; i < 6; i++)
+    for(int i=0; i < 6; i++)
         mb_mapping->tab_registers[0x0AFE + i] = mb_mapping->tab_registers[0x0D40 + i];
-    for(i=0; i < 4; i++)
+    for(int i=0; i < 4; i++)
         mb_mapping->tab_registers[0x0B04 + i] = mb_mapping->tab_registers[0x0C80 + i];
+    mb_mapping->tab_registers[0x0D39] = 0x1;
     //modbus_set_debug(ctx, TRUE);
 
-    // Создание потооков, работающих независимо
-    pthread_t thread2;
-    pthread_create(&thread2, NULL, reinterpret_cast<void *(*)(void *)>(times), &mb_mapping);
-    pthread_t thread4;
-    pthread_create(&thread4, NULL, reinterpret_cast<void *(*)(void *)>(ctrl_order), &mb_mapping);
-    pthread_t thread5;
-    pthread_create(&thread5, NULL, reinterpret_cast<void *(*)(void *)>(sim_sensor), &mb_mapping);
-
-    pthread_detach(thread2);
-    pthread_detach(thread4);
-    pthread_detach(thread5);
-
-    if (use_backend == TCP) {
-        s = modbus_tcp_listen(ctx, 2);
-        //std::cout << "check12" << std::endl;
-        modbus_tcp_accept(ctx, &s);
-    }
-    else
-    {
-        rc = modbus_connect(ctx);
-        if (rc == -1)
-        {
-            fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
-            modbus_free(ctx);
-            return -1;
+    // Инициализация регистров из файла
+    for (int i=0; i < config.size(); i++) { // Количество буферов
+        for (int j = 0; j < config[i].begin()->second.size(); j++) { // Количество в них регистров
+            mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
         }
     }
 
-
-    threadData* data = (threadData*) malloc(sizeof(threadData));
-    data->mapping = mb_mapping;
-    data->use_backend = use_backend;
-    data->ctx = ctx;
-
-    // Потоки сервера
-    pthread_t thread1;
-    pthread_create(&thread1, NULL, reinterpret_cast<void *(*)(void *)>(serv), *&data);
-
-    //pthread_t thread3;
-    //pthread_create(&thread3, NULL, reinterpret_cast<void *(*)(void *)>(serv), *&data);
-
-    pthread_join(thread1, NULL);
-    //pthread_join(thread3, NULL);
+    threadData* data = (threadData*) malloc(10*sizeof(threadData));
+    for (int i = 0; i < 10; i++) {
+        data[i].mapping = mb_mapping;
+        data[i].use_backend = use_backend;
+    }
 
 
+
+    pthread_t thread2;
+    pthread_create(&thread2, NULL, reinterpret_cast<void *(*)(void *)>(times), &mb_mapping);
+    pthread_detach(thread2);
+    pthread_t thread4;
+    pthread_create(&thread4, NULL, reinterpret_cast<void *(*)(void *)>(ctrl_order), &mb_mapping);
+    pthread_detach(thread4);
+    pthread_t thread5;
+    pthread_create(&thread5, NULL, reinterpret_cast<void *(*)(void *)>(sim_sensor), &mb_mapping);
+    pthread_detach(thread5);
+
+
+    //modbus_set_debug(ctx, TRUE);
+
+    pthread_t* threads = (pthread_t*) malloc(10 * sizeof(pthread_t));
+    int numThr = 0;
+
+
+    s = modbus_tcp_listen(ctx[numThr], 1);
+    while (mb_mapping->tab_registers[0x0D39]) {
+        if (use_backend == TCP) {
+            modbus_tcp_accept(ctx[numThr], &s);
+            std::cout << "accept" << std::endl;
+        } else {
+            rc = modbus_connect(ctx[numThr]);
+            if (rc == -1) {
+                fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
+                modbus_free(ctx[numThr]);
+                return -1;
+            }
+        }
+
+        data[numThr].ctx = ctx[numThr];
+
+        pthread_create(&threads[numThr], NULL, reinterpret_cast<void *(*)(void *)>(serv), &data[numThr]);
+        numThr++;
+        std::cout << "fin" << std::endl;
+    }
+    for (int i = 0; i < numThr; i++)
+        pthread_join(threads[i],NULL);
+
+    std::cout << config[1].begin()->second[2];
     // Сохранение регистров обратно в файл
-    for (i=0; i < config.size(); i++) {
+    for (int i=0; i < config.size(); i++) {
         for (int j = 0; j < config[i].begin()->second.size(); j++) {
             config[i].begin()->second[j] = hex_to_str(mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j]);
         }
     }
     std::ofstream fout(fname);
     fout << config;
+    std::cout << config[1].begin()->second[2];
 
     printf("Quit the loop: %s\n", modbus_strerror(errno));
 
@@ -644,7 +662,11 @@ int main(int argc, char*argv[])
         }
     }
     modbus_mapping_free(mb_mapping);
-    modbus_close(ctx);
-    modbus_free(ctx);
+    for (int i = 0; i < 10; i++) {
+        modbus_close(ctx[i]);
+        modbus_free(ctx[i]);
+    }
+    free(threads);
+    free(data);
     return 0;
 }
