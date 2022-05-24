@@ -586,21 +586,12 @@ int main(int argc, char*argv[])
     for(int i=0; i < 4; i++)
         mb_mapping->tab_registers[0x0B04 + i] = mb_mapping->tab_registers[0x0C80 + i];
     mb_mapping->tab_registers[0x0D39] = 0x1;
-    //modbus_set_debug(ctx, TRUE);
-
-    // Инициализация регистров из файла
-    for (int i=0; i < config.size(); i++) { // Количество буферов
-        for (int j = 0; j < config[i].begin()->second.size(); j++) { // Количество в них регистров
-            mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
-        }
-    }
 
     threadData* data = (threadData*) malloc(10*sizeof(threadData));
     for (int i = 0; i < 10; i++) {
         data[i].mapping = mb_mapping;
         data[i].use_backend = use_backend;
     }
-
 
 
     pthread_t thread2;
@@ -643,7 +634,6 @@ int main(int argc, char*argv[])
     for (int i = 0; i < numThr; i++)
         pthread_join(threads[i],NULL);
 
-    std::cout << config[1].begin()->second[2];
     // Сохранение регистров обратно в файл
     for (int i=0; i < config.size(); i++) {
         for (int j = 0; j < config[i].begin()->second.size(); j++) {
@@ -652,7 +642,6 @@ int main(int argc, char*argv[])
     }
     std::ofstream fout(fname);
     fout << config;
-    std::cout << config[1].begin()->second[2];
 
     printf("Quit the loop: %s\n", modbus_strerror(errno));
 
