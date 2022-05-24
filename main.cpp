@@ -16,20 +16,32 @@ enum {
     RTU
 };
 
+// Мьютексы для потоков
 pthread_mutex_t timeMut;
-pthread_mutex_t ctrl_Ord;
+pthread_mutex_t buf_st_1;
+pthread_mutex_t buf_st_2;
+pthread_mutex_t buf_v_1;
+pthread_mutex_t buf_v_2;
+pthread_mutex_t buf_def_1;
+pthread_mutex_t nakop_inf;
+pthread_mutex_t buf_sr;
+pthread_mutex_t buf_sr_st;
+pthread_mutex_t buf_sr_kv;
+pthread_mutex_t threadQue;
 
+// Сруктура для передачи данных потокам сервера
 typedef struct{
     int use_backend;
     modbus_mapping_t *mapping;
     modbus_t *ctx;
+    int nm_thr;
 }threadData;
 
 // Поток, считающий время
 void * times(void *&mapping)
 {
     modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
-    for (;;)
+    while(mb_mapping->tab_registers[0x0D39])
     {
         usleep(100000);
         pthread_mutex_lock(&timeMut);
@@ -67,25 +79,26 @@ void * times(void *&mapping)
         pthread_mutex_unlock(&timeMut);
 
     }
+    return nullptr;
 }
 // Поток, сохраняющий контроль приказа
 void *ctrl_order(void *&mapping){
     modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
-    for (;;){
+    while(mb_mapping->tab_registers[0x0D39]){
         if (mb_mapping->tab_registers[0x0D41] >> 15){
             sleep(10);
-            pthread_mutex_lock(&ctrl_Ord);
+            pthread_mutex_lock(&buf_st_2);
             mb_mapping->tab_registers[0x0D41] &= 0x7FFF;
-            pthread_mutex_unlock(&ctrl_Ord);
+            pthread_mutex_unlock(&buf_st_2);
         }
     }
+    return nullptr;
 }
 // Поток симулирования сквитирований
 void *sim_sensor(void *&mapping){
     modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
     int num;
-    int en = 1;
-    while (en){
+    while (mb_mapping->tab_registers[0x0D39]){
         std::cout << "Какой буфер? \n1.Буфер статуса\n2.Буфер ВЫЗОВ\n3.Буфер защит ЦЗА\n0.Выключение сервера\n";
         std::cin >> num;
         switch(num){
@@ -104,6 +117,8 @@ void *sim_sensor(void *&mapping){
                 std::cout << "12.Неуспешное АПВ БВ произошло.\n";
                 std::cout << "13.Перегрев контактного провода есть/нет.\n";
                 std::cin >> num;
+                pthread_mutex_lock(&buf_st_1);
+                pthread_mutex_lock(&buf_st_2);
                 switch(num){
                     case 1:
                         if ((mb_mapping->tab_registers[0x0D40] >> 1) % 2){
@@ -180,6 +195,8 @@ void *sim_sensor(void *&mapping){
                         std::cout << "Отсутствует.\n";
                         break;
                 }
+                pthread_mutex_unlock(&buf_st_1);
+                pthread_mutex_unlock(&buf_st_2);
                 break;
             case 2:
                 std::cout << "1.Неисправность БВ есть.\n";
@@ -199,6 +216,8 @@ void *sim_sensor(void *&mapping){
                 std::cout << "15.Неисправность ВЭ есть.\n";
                 std::cout << "16.Перегрев контактного провода есть.\n";
                 std::cin >> num;
+                pthread_mutex_lock(&buf_v_1);
+                pthread_mutex_lock(&buf_v_2);
                 switch(num){
                     case 1:
                         mb_mapping->tab_registers[0x0D42] |= 0x1;
@@ -252,6 +271,8 @@ void *sim_sensor(void *&mapping){
                         std::cout << "Отсутствует.\n";
                         break;
                 }
+                pthread_mutex_unlock(&buf_v_1);
+                pthread_mutex_unlock(&buf_v_2);
                 break;
             case 3:
                 std::cout << "1.3 ступень МТЗ сработала.\n";
@@ -270,6 +291,7 @@ void *sim_sensor(void *&mapping){
                 std::cout << "14.АСЗ сработала.\n";
                 std::cout << "15.КвТЗ сработала.\n";
                 std::cin >> num;
+                pthread_mutex_lock(&buf_def_1);
                 switch(num){
                     case 1:
                         mb_mapping->tab_registers[0x0D44] |= 0x1;
@@ -320,17 +342,19 @@ void *sim_sensor(void *&mapping){
                         std::cout << "Отсутствует.\n";
                         break;
                 }
+                pthread_mutex_unlock(&buf_def_1);
                 break;
             case 0:
                 mb_mapping->tab_registers[0x0D39] = 0x0;
-                en = 0;
                 break;
             default:
                 std::cout << "Не существует.\n";
                 break;
         }
     }
+    return nullptr;
 }
+
 // Перевод 16-ричного числа в строку
 std::string hex_to_str(uint16_t H){
     std::string S = "0x";
@@ -384,6 +408,7 @@ int serv(void* thrData) {
     modbus_mapping_t* mb_mapping = data->mapping;
     int use_backend = data->use_backend;
     modbus_t *ctx = data->ctx;
+    int my_nm = data->nm_thr;
     int rc;
     int i;
     int j;
@@ -417,11 +442,15 @@ int serv(void* thrData) {
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == 0x0D60) {
             switch (query[header_length + 7]) {
                 case 1: // БВ вкл/откл
+                    pthread_mutex_lock(&buf_st_1);
                     if (query[header_length + 9] == 0x40) {
                         mb_mapping->tab_registers[0x0D40] |= 0x1;
+                        pthread_mutex_unlock(&buf_st_1);
                     } else if (query[header_length+9] == 0x20) {
                         mb_mapping->tab_registers[0x0D40] &= 0xFFFE;
+                        pthread_mutex_unlock(&buf_st_1);
                         // Изменение буфера накоп. информации
+                        pthread_mutex_lock(&nakop_inf);
                         for (i=0; i < 4; i++)
                             mb_mapping->tab_registers[0x0CC0 + i] = mb_mapping->tab_registers[0x0C80 + i];
                         mb_mapping->tab_registers[0x0CC4]++;
@@ -430,49 +459,73 @@ int serv(void* thrData) {
                         // сумма макс токов отключения
                         mb_mapping->tab_registers[0x0CCA] = mb_mapping->tab_registers[0x0C84];
                         mb_mapping->tab_registers[0x0CCB] = mb_mapping->tab_registers[0x0C85];
+                        pthread_mutex_unlock(&nakop_inf);
                     }
                     break;
                 case 2: // ОР вкл/откл
+                    pthread_mutex_lock(&buf_st_1);
                     if (query[header_length + 9] == 0x40) {
                         mb_mapping->tab_registers[0x0D40] |= 0x4;
                     } else if (query[header_length + 9] == 0x20) {
                         mb_mapping->tab_registers[0x0D40] &= 0xFFFB;
                     }
+                    pthread_mutex_unlock(&buf_st_1);
                     break;
                 case 3: // ВЭ вкл/откл
+                    pthread_mutex_lock(&buf_st_1);
                     if (query[header_length + 9] == 0x40) {
                         mb_mapping->tab_registers[0x0D40] |= 0x10;
                     } else if (query[header_length + 9] == 0x20) {
                         mb_mapping->tab_registers[0x0D40] &= 0xFFEF;
                     }
+                    pthread_mutex_unlock(&buf_st_1);
                     break;
                 case 4: // АПВ БВ ввести/вывести
+                    pthread_mutex_lock(&buf_st_2);
                     if (query[header_length + 9] == 0x40) {
                         mb_mapping->tab_registers[0x0D41] |= 0x20;
                     } else if (query[header_length + 9] == 0x20) {
                         mb_mapping->tab_registers[0x0D41] &= 0xFFDF;
                     }
+                    pthread_mutex_unlock(&buf_st_2);
                     break;
                 case 5: // Вкл уставку 2 / Вкл уставку 1 (взаимоисключение? добавить if в оба на проверку второго)
                     if (query[header_length + 9] == 0x40) {
+                        pthread_mutex_lock(&buf_st_1);
                         mb_mapping->tab_registers[0x0D40] |= 0x2000;
+                        pthread_mutex_unlock(&buf_st_1);
                     } else if (query[header_length + 9] == 0x20) {
+                        pthread_mutex_lock(&buf_st_2);
                         mb_mapping->tab_registers[0x0D41] |= 0x1000;
+                        pthread_mutex_unlock(&buf_st_2);
                     }
                     break;
                 case 6: // Квитировать
                     if (query[header_length + 9] == 0x40) {
+                        pthread_mutex_lock(&buf_st_1);
+                        pthread_mutex_lock(&buf_st_2);
+                        pthread_mutex_lock(&buf_v_1);
+                        pthread_mutex_lock(&buf_v_2);
+                        pthread_mutex_lock(&buf_def_1);
                         mb_mapping->tab_registers[0x0D40] &= 0xF4FF;
                         mb_mapping->tab_registers[0x0D41] &= 0xFF1F;
                         mb_mapping->tab_registers[0x0D42] = 0;
                         mb_mapping->tab_registers[0x0D43] = 0;
                         mb_mapping->tab_registers[0x0D44] = 0;
+                        pthread_mutex_unlock(&buf_st_1);
+                        pthread_mutex_unlock(&buf_st_2);
+                        pthread_mutex_unlock(&buf_v_1);
+                        pthread_mutex_unlock(&buf_v_2);
+                        pthread_mutex_unlock(&buf_def_1);
                     }
                     break;
                 case 7: // Сброс накопительной инф-ии
-                    if (query[header_length + 9] == 0x40)
+                    if (query[header_length + 9] == 0x40) {
+                        pthread_mutex_lock(&nakop_inf);
                         for (i = 0; i < 12; i++)
                             mb_mapping->tab_registers[0x0CC0 + i] = 0;
+                        pthread_mutex_unlock(&nakop_inf);
+                    }
                     break;
                 case 8: // Резерв
                     break;
@@ -481,41 +534,51 @@ int serv(void* thrData) {
             if (nb_srez<16){
                 // Изменение буфера ТС из-за статусов - создание среза
                 if (query[header_length+7] != 7  && query[header_length+7] != 8){
+                    pthread_mutex_lock(&buf_sr);
                     for(i=0; i < 6; i++)
                         mb_mapping->tab_registers[0x0AFE + 10 * (nb_srez+1) + i] = mb_mapping->tab_registers[0x0D40 + i];
                     for(i=0; i < 4; i++)
                         mb_mapping->tab_registers[0x0B04 + 10 * (nb_srez+1) + i] = mb_mapping->tab_registers[0x0C80 + i];
+                    pthread_mutex_unlock(&buf_sr);
                 }
                 nb_srez++;
             } else {
+                pthread_mutex_lock(&buf_sr_st);
                 mb_mapping->tab_registers[0x0AFD] |= 0x0002;
+                pthread_mutex_unlock(&buf_sr_st);
             }
 
             // Бит контроля приказа взведен
-            pthread_mutex_lock(&ctrl_Ord);
+            pthread_mutex_lock(&buf_st_2);
             mb_mapping->tab_registers[0x0D41] |= 0x8000;
-            pthread_mutex_unlock(&ctrl_Ord);
+            pthread_mutex_unlock(&buf_st_2);
         }
         // Запись в буфер квитирования
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == 0x0AFC) {
             if (query[header_length+7] % 2){
                 if (nb_srez) {
+                    pthread_mutex_lock(&buf_sr_kv);
                     for (i = 0; i < nb_srez; i++)
                         for (j = 0; j < 10; j++)
                             mb_mapping->tab_registers[0x0AFE + 10 * i + j] = mb_mapping->tab_registers[0x0AFE + 10 * (i+1) + j];
+                    pthread_mutex_unlock(&buf_sr_kv);
                     nb_srez--;
                 }
             }
             if ((query[header_length+7] >> 1) % 2){
+                pthread_mutex_lock(&buf_sr_st);
                 mb_mapping->tab_registers[0x0AFD] &= 0xFFFD;
+                pthread_mutex_unlock(&buf_sr_st);
             }
         }
         // Если есть срез, то есть непрочитанные данные
+        pthread_mutex_lock(&buf_sr_st);
         if(nb_srez){
             mb_mapping->tab_registers[0x0AFD] |= 0x0001;
         } else {
             mb_mapping->tab_registers[0x0AFD] &= 0xFFFE;
         }
+        pthread_mutex_unlock(&buf_sr_st);
 
 
         // Обновление буфера измерений из-за коррекции времени
@@ -527,6 +590,9 @@ int serv(void* thrData) {
         }
     }
 
+    pthread_mutex_lock(&threadQue);
+    mb_mapping->tab_registers[0x0D38] |= 1<<my_nm;
+    pthread_mutex_unlock(&threadQue);
     free(query);
     return 0;
 }
@@ -539,7 +605,8 @@ int main(int argc, char*argv[])
     modbus_mapping_t *mb_mapping;
     int rc;
     int use_backend;
-    modbus_t **ctx = (modbus_t**) malloc(10*sizeof(modbus_t*));
+    int m_num_thr = 1;
+    modbus_t **ctx = new modbus_t *[m_num_thr];
     std::string fname = "../config.yaml";
     YAML::Node config = YAML::LoadFile(fname);
     if(!(pthread_mutex_init(&timeMut, NULL)))
@@ -559,10 +626,10 @@ int main(int argc, char*argv[])
     }
 
     if (use_backend == TCP) {
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < m_num_thr; i++)
             ctx[i] = modbus_new_tcp("127.0.0.1", 1502);
     } else {
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < m_num_thr; i++) {
             ctx[i] = modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1);
             modbus_set_slave(ctx[i], SERVER_ID);
         }
@@ -586,14 +653,15 @@ int main(int argc, char*argv[])
     for(int i=0; i < 4; i++)
         mb_mapping->tab_registers[0x0B04 + i] = mb_mapping->tab_registers[0x0C80 + i];
     mb_mapping->tab_registers[0x0D39] = 0x1;
+    mb_mapping->tab_registers[0x0D38] = (1 << m_num_thr) - 1;
 
-    threadData* data = (threadData*) malloc(10*sizeof(threadData));
-    for (int i = 0; i < 10; i++) {
+    threadData* data = new threadData[m_num_thr];
+    for (int i = 0; i < m_num_thr; i++) {
         data[i].mapping = mb_mapping;
         data[i].use_backend = use_backend;
     }
 
-
+    // Запуск потоков
     pthread_t thread2;
     pthread_create(&thread2, NULL, reinterpret_cast<void *(*)(void *)>(times), &mb_mapping);
     pthread_detach(thread2);
@@ -605,33 +673,42 @@ int main(int argc, char*argv[])
     pthread_detach(thread5);
 
 
-    //modbus_set_debug(ctx, TRUE);
-
-    pthread_t* threads = (pthread_t*) malloc(10 * sizeof(pthread_t));
-    int numThr = 0;
-
-
-    s = modbus_tcp_listen(ctx[numThr], 1);
+    pthread_t* threads = new pthread_t[m_num_thr];
+    int k;
+    int f;
+    s = modbus_tcp_listen(ctx[0], 1);
     while (mb_mapping->tab_registers[0x0D39]) {
-        if (use_backend == TCP) {
-            modbus_tcp_accept(ctx[numThr], &s);
-            std::cout << "accept" << std::endl;
-        } else {
-            rc = modbus_connect(ctx[numThr]);
-            if (rc == -1) {
-                fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
-                modbus_free(ctx[numThr]);
-                return -1;
+        f = 1;
+        k = 0;
+        while (mb_mapping->tab_registers[0x0D38] && f && mb_mapping->tab_registers[0x0D39]){
+            if ((mb_mapping->tab_registers[0x0D38] >> k) % 2){
+                if (use_backend == TCP) {
+                    modbus_tcp_accept(ctx[k], &s);
+                    std::cout << "accept" << std::endl;
+                } else {
+                    rc = modbus_connect(ctx[k]);
+                    if (rc == -1) {
+                        fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
+                        modbus_free(ctx[k]);
+                        return -1;
+                    }
+                }
+
+                data[k].ctx = ctx[k];
+                data[k].nm_thr = k;
+
+                pthread_create(&threads[k], NULL, reinterpret_cast<void *(*)(void *)>(serv), &data[k]);
+                std::cout << "fin" << std::endl;
+                pthread_mutex_lock(&threadQue);
+                mb_mapping->tab_registers[0x0D38] &= (1 << m_num_thr) - 1 - (1<<k);
+                pthread_mutex_unlock(&threadQue);
+                f = 0;
             }
+            k++;
         }
-
-        data[numThr].ctx = ctx[numThr];
-
-        pthread_create(&threads[numThr], NULL, reinterpret_cast<void *(*)(void *)>(serv), &data[numThr]);
-        numThr++;
-        std::cout << "fin" << std::endl;
     }
-    for (int i = 0; i < numThr; i++)
+
+    for (int i = 0; i < m_num_thr; i++)
         pthread_join(threads[i],NULL);
 
     // Сохранение регистров обратно в файл
@@ -640,8 +717,10 @@ int main(int argc, char*argv[])
             config[i].begin()->second[j] = hex_to_str(mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j]);
         }
     }
-    std::ofstream fout(fname);
+    std::ofstream fout;
+    fout.open(fname);
     fout << config;
+    fout.close();
 
     printf("Quit the loop: %s\n", modbus_strerror(errno));
 
@@ -650,12 +729,13 @@ int main(int argc, char*argv[])
             close(s);
         }
     }
+
     modbus_mapping_free(mb_mapping);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < m_num_thr; i++) {
         modbus_close(ctx[i]);
         modbus_free(ctx[i]);
     }
-    free(threads);
-    free(data);
+    delete[] threads;
+    delete[] data;
     return 0;
 }
