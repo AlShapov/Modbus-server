@@ -18,6 +18,7 @@ enum {
 
 // Мьютексы для потоков
 pthread_mutex_t timeMut;
+pthread_mutex_t currMeas;
 pthread_mutex_t buf_st_1;
 pthread_mutex_t buf_st_2;
 pthread_mutex_t buf_v_1;
@@ -28,21 +29,26 @@ pthread_mutex_t buf_sr;
 pthread_mutex_t buf_sr_st;
 pthread_mutex_t buf_sr_kv;
 pthread_mutex_t threadQue;
+pthread_mutex_t end_serv;
 
 // Сруктура для передачи данных потокам сервера
-typedef struct{
+struct threadData{
     int use_backend;
     modbus_mapping_t *mapping;
     modbus_t *ctx;
     int nm_thr;
-}threadData;
+};
 
 // Поток, считающий время
 void * times(void *&mapping)
 {
     modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
-    while(mb_mapping->tab_registers[0x0D39])
+    int kon_serv;
+    do
     {
+        pthread_mutex_lock(&end_serv);
+        kon_serv = mb_mapping->tab_registers[0x0D39];
+        pthread_mutex_unlock(&end_serv);
         usleep(100000);
         pthread_mutex_lock(&timeMut);
         mb_mapping->tab_registers[0x0C80]+=100;
@@ -78,20 +84,50 @@ void * times(void *&mapping)
         }
         pthread_mutex_unlock(&timeMut);
 
-    }
+    } while(kon_serv);
+    return nullptr;
+}
+// Поток, генерирующий текущие измерения
+void *curr_meas(void *&mapping){
+    modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
+    int f_end_serv;
+    do {
+        pthread_mutex_lock(&end_serv);
+        f_end_serv = mb_mapping->tab_registers[0x0D39];
+        pthread_mutex_unlock(&end_serv);
+        pthread_mutex_lock(&timeMut);
+        srand(mb_mapping->tab_registers[0x0C81] % 0x100);
+        pthread_mutex_unlock(&timeMut);
+        pthread_mutex_lock(&currMeas);
+        mb_mapping->tab_registers[0x0C84] = rand() % 50;
+        mb_mapping->tab_registers[0x0C85] = rand() % 35;
+        mb_mapping->tab_registers[0x0C86] = rand() % 3000 + 140;
+        mb_mapping->tab_registers[0x0C87] = rand() % 35;
+        pthread_mutex_unlock(&currMeas);
+        sleep(5);
+    } while(f_end_serv);
+
     return nullptr;
 }
 // Поток, сохраняющий контроль приказа
 void *ctrl_order(void *&mapping){
     modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
-    while(mb_mapping->tab_registers[0x0D39]){
-        if (mb_mapping->tab_registers[0x0D41] >> 15){
+    int f_end_serv;
+    int cr_prik;
+    do {
+        pthread_mutex_lock(&end_serv);
+        f_end_serv = mb_mapping->tab_registers[0x0D39];
+        pthread_mutex_unlock(&end_serv);
+        pthread_mutex_lock(&buf_st_2);
+        cr_prik = mb_mapping->tab_registers[0x0D41] >> 15;
+        pthread_mutex_unlock(&buf_st_2);
+        if (cr_prik){
             sleep(10);
             pthread_mutex_lock(&buf_st_2);
             mb_mapping->tab_registers[0x0D41] &= 0x7FFF;
             pthread_mutex_unlock(&buf_st_2);
         }
-    }
+    } while(f_end_serv);
     return nullptr;
 }
 // Поток симулирования сквитирований
@@ -345,7 +381,9 @@ void *sim_sensor(void *&mapping){
                 pthread_mutex_unlock(&buf_def_1);
                 break;
             case 0:
+                pthread_mutex_lock(&end_serv);
                 mb_mapping->tab_registers[0x0D39] = 0x0;
+                pthread_mutex_unlock(&end_serv);
                 break;
             default:
                 std::cout << "Не существует.\n";
@@ -451,15 +489,18 @@ int serv(void* thrData) {
                         pthread_mutex_unlock(&buf_st_1);
                         // Изменение буфера накоп. информации
                         pthread_mutex_lock(&nakop_inf);
+                        pthread_mutex_lock(&currMeas);
                         for (i=0; i < 4; i++)
                             mb_mapping->tab_registers[0x0CC0 + i] = mb_mapping->tab_registers[0x0C80 + i];
                         mb_mapping->tab_registers[0x0CC4]++;
-                        // аварийные отключения
-                        // выработанный ресурс
-                        // сумма макс токов отключения
+                        srand(mb_mapping->tab_registers[0x0C81] % 0x100);
+                        mb_mapping->tab_registers[0x0CC5] = rand() % 5;
+                        mb_mapping->tab_registers[0x0CC6] = rand();
+                        mb_mapping->tab_registers[0x0CC7] = rand() % 10;
                         mb_mapping->tab_registers[0x0CCA] = mb_mapping->tab_registers[0x0C84];
                         mb_mapping->tab_registers[0x0CCB] = mb_mapping->tab_registers[0x0C85];
                         pthread_mutex_unlock(&nakop_inf);
+                        pthread_mutex_unlock(&currMeas);
                     }
                     break;
                 case 2: // ОР вкл/откл
@@ -535,10 +576,22 @@ int serv(void* thrData) {
                 // Изменение буфера ТС из-за статусов - создание среза
                 if (query[header_length+7] != 7  && query[header_length+7] != 8){
                     pthread_mutex_lock(&buf_sr);
+                    pthread_mutex_lock(&buf_st_1);
+                    pthread_mutex_lock(&buf_st_2);
+                    pthread_mutex_lock(&buf_v_1);
+                    pthread_mutex_lock(&buf_v_2);
+                    pthread_mutex_lock(&buf_def_1);
                     for(i=0; i < 6; i++)
                         mb_mapping->tab_registers[0x0AFE + 10 * (nb_srez+1) + i] = mb_mapping->tab_registers[0x0D40 + i];
+                    pthread_mutex_unlock(&buf_st_1);
+                    pthread_mutex_unlock(&buf_st_2);
+                    pthread_mutex_unlock(&buf_v_1);
+                    pthread_mutex_unlock(&buf_v_2);
+                    pthread_mutex_unlock(&buf_def_1);
+                    pthread_mutex_lock(&timeMut);
                     for(i=0; i < 4; i++)
                         mb_mapping->tab_registers[0x0B04 + 10 * (nb_srez+1) + i] = mb_mapping->tab_registers[0x0C80 + i];
+                    pthread_mutex_unlock(&timeMut);
                     pthread_mutex_unlock(&buf_sr);
                 }
                 nb_srez++;
@@ -605,7 +658,7 @@ int main(int argc, char*argv[])
     modbus_mapping_t *mb_mapping;
     int rc;
     int use_backend;
-    int m_num_thr = 1;
+    int m_num_thr = 3;
     modbus_t **ctx = new modbus_t *[m_num_thr];
     std::string fname = "../config.yaml";
     YAML::Node config = YAML::LoadFile(fname);
@@ -635,7 +688,7 @@ int main(int argc, char*argv[])
         }
     }
     // Память для мапа
-    mb_mapping = modbus_mapping_new(0,0,0xFFFF,0);
+    mb_mapping = modbus_mapping_new(0,0,0x0D61+1,0);
     if (mb_mapping == NULL) {
         fprintf(stderr, "Failed to allocate the mapping: %s\n",
                 modbus_strerror(errno));
@@ -664,27 +717,33 @@ int main(int argc, char*argv[])
     // Запуск потоков
     pthread_t thread2;
     pthread_create(&thread2, NULL, reinterpret_cast<void *(*)(void *)>(times), &mb_mapping);
-    pthread_detach(thread2);
     pthread_t thread4;
     pthread_create(&thread4, NULL, reinterpret_cast<void *(*)(void *)>(ctrl_order), &mb_mapping);
-    pthread_detach(thread4);
     pthread_t thread5;
     pthread_create(&thread5, NULL, reinterpret_cast<void *(*)(void *)>(sim_sensor), &mb_mapping);
-    pthread_detach(thread5);
+    pthread_t thread6;
+    pthread_create(&thread6, NULL, reinterpret_cast<void *(*)(void *)>(curr_meas), &mb_mapping);
 
 
     pthread_t* threads = new pthread_t[m_num_thr];
     int k;
     int f;
+    int sv_thr;
+    int f_end_serv;
     s = modbus_tcp_listen(ctx[0], 1);
-    while (mb_mapping->tab_registers[0x0D39]) {
+    do {
         f = 1;
         k = 0;
-        while (mb_mapping->tab_registers[0x0D38] && f && mb_mapping->tab_registers[0x0D39]){
-            if ((mb_mapping->tab_registers[0x0D38] >> k) % 2){
+        pthread_mutex_lock(&end_serv);
+        f_end_serv = mb_mapping->tab_registers[0x0D39];
+        pthread_mutex_unlock(&end_serv);
+        do {
+            pthread_mutex_lock(&threadQue);
+            sv_thr = mb_mapping->tab_registers[0x0D38];
+            pthread_mutex_unlock(&threadQue);
+            if ((sv_thr >> k) % 2){
                 if (use_backend == TCP) {
                     modbus_tcp_accept(ctx[k], &s);
-                    std::cout << "accept" << std::endl;
                 } else {
                     rc = modbus_connect(ctx[k]);
                     if (rc == -1) {
@@ -698,18 +757,21 @@ int main(int argc, char*argv[])
                 data[k].nm_thr = k;
 
                 pthread_create(&threads[k], NULL, reinterpret_cast<void *(*)(void *)>(serv), &data[k]);
-                std::cout << "fin" << std::endl;
                 pthread_mutex_lock(&threadQue);
                 mb_mapping->tab_registers[0x0D38] &= (1 << m_num_thr) - 1 - (1<<k);
                 pthread_mutex_unlock(&threadQue);
                 f = 0;
             }
             k++;
-        }
-    }
+        } while (sv_thr && f && f_end_serv);
+    } while (f_end_serv);
 
     for (int i = 0; i < m_num_thr; i++)
         pthread_join(threads[i],NULL);
+    pthread_join(thread2, NULL);
+    pthread_join(thread4, NULL);
+    pthread_join(thread5, NULL);
+    pthread_join(thread6, NULL);
 
     // Сохранение регистров обратно в файл
     for (int i=0; i < config.size(); i++) {
@@ -735,6 +797,7 @@ int main(int argc, char*argv[])
         modbus_close(ctx[i]);
         modbus_free(ctx[i]);
     }
+    delete[] ctx;
     delete[] threads;
     delete[] data;
     return 0;
