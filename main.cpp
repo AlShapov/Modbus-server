@@ -722,37 +722,33 @@ int main(int argc, char*argv[])
 
 
     std::vector<std::thread> threads;
-    int f;
-    int f_end_serv;
+    end_serv.lock();
+    int f_end_serv = mb_mapping->tab_registers[REG_END_SERV];
+    end_serv.unlock();
     if (use_backend == TCP)
         s = modbus_tcp_listen(ctxs, 1);
     do {
-        f = 1;
-        do {
-            if (use_backend == TCP) {
-                ctx.emplace_back(modbus_new_tcp("127.0.0.1", 1502));
-                modbus_tcp_accept(ctx.back(), &s);
-            } else {
-                ctx.emplace_back(modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1));
-                modbus_set_slave(ctx.back(), SERVER_ID);
-                rc = modbus_connect(ctx.back());
-                if (rc == -1) {
-                    fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
-                    modbus_free(ctx.back());
-                    return -1;
-                }
+        if (use_backend == TCP) {
+            ctx.emplace_back(modbus_new_tcp("127.0.0.1", 1502));
+            modbus_tcp_accept(ctx.back(), &s);
+        } else {
+            ctx.emplace_back(modbus_new_rtu("/dev/ttyUSB0", 115200, 'N', 8, 1));
+            modbus_set_slave(ctx.back(), SERVER_ID);
+            rc = modbus_connect(ctx.back());
+            if (rc == -1) {
+                fprintf(stderr, "Unable to connect %s\n", modbus_strerror(errno));
+                modbus_free(ctx.back());
+                return -1;
             }
+        }
 
-            if (f_end_serv){
-                end_serv.lock();
-                data.emplace_back(use_backend,mb_mapping,ctx.back());
-                end_serv.unlock();
-                threads.emplace_back(serv, &data.back());
+        if (f_end_serv){
+            end_serv.lock();
+            data.emplace_back(use_backend,mb_mapping,ctx.back());
+            end_serv.unlock();
+            threads.emplace_back(serv, &data.back());
+        }
 
-                 f = 0;
-            }
-
-        } while (f && f_end_serv);
         end_serv.lock();
         f_end_serv = mb_mapping->tab_registers[REG_END_SERV];
         end_serv.unlock();

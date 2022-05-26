@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/mnt/c/Users/Л/CLionProjects/ModServ/Modbus-server/main.cpp
+/mnt/c/Users/Л/CLionProjects/Modbas-server/main.cpp
 cstdio
 -
 unistd.h
