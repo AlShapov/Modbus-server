@@ -56,7 +56,7 @@ void * times(void *&mapping)
         end_serv.lock();
         kon_serv = mb_mapping->tab_registers[REG_END_SERV];
         end_serv.unlock();
-        usleep(100000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         meas_time.lock();
         mb_mapping->tab_registers[0x0C80]+=100;
         if (mb_mapping->tab_registers[0x0C80] >= 999)
@@ -109,7 +109,7 @@ void *curr_meas(void *&mapping){
         mb_mapping->tab_registers[0x0C86] = rand() % 3000 + 140;
         mb_mapping->tab_registers[0x0C87] = rand() % 35;
         meas_time.unlock();
-        sleep(5);
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     } while(f_end_serv);
 
     return nullptr;
@@ -127,11 +127,12 @@ void *ctrl_order(void *&mapping){
         cr_prik = mb_mapping->tab_registers[0x0D41] >> 15;
         buf_st.unlock();
         if (cr_prik){
-            sleep(10);
+            std::this_thread::sleep_for(std::chrono::seconds(10));
             buf_st.lock();
             mb_mapping->tab_registers[0x0D41] &= 0x7FFF;
             buf_st.unlock();
         }
+        std::this_thread::sleep_for(std::chrono::seconds(3));
     } while(f_end_serv);
     return nullptr;
 }
@@ -416,9 +417,9 @@ void *sim_sensor(void *mapp_ctx){
         }
         // Если есть срез, то есть непрочитанные данные
         if(mb_mapping->tab_registers[REG_SREZ_Q]){
-            mb_mapping->tab_registers[BUF_SREZ] |= 0x0001;
+            mb_mapping->tab_registers[BUF_SREZ] |= 0x0100;
         } else {
-            mb_mapping->tab_registers[BUF_SREZ] &= 0xFFFE;
+            mb_mapping->tab_registers[BUF_SREZ] &= 0xFEFF;
         }
         buf_sr.unlock();
     }
@@ -635,9 +636,9 @@ int serv(void* thrData) {
 
         // Если есть срез, то есть непрочитанные данные
         if(mb_mapping->tab_registers[REG_SREZ_Q]){
-            mb_mapping->tab_registers[BUF_SREZ] |= 0x0001;
+            mb_mapping->tab_registers[BUF_SREZ] |= 0x0100;
         } else {
-            mb_mapping->tab_registers[BUF_SREZ] &= 0xFFFE;
+            mb_mapping->tab_registers[BUF_SREZ] &= 0xFEFF;
         }
         buf_sr.unlock();
 
