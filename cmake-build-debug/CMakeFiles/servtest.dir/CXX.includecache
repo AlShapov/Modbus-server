@@ -6,16 +6,16 @@
 
 #IncludeRegexTransform: 
 
-/mnt/c/Users/Л/CLionProjects/Modbas-server/main.cpp
-stdio.h
+/mnt/c/Users/sassh/CLionProjects/Modbus-server/main.cpp
+cstdio
 -
 unistd.h
 -
-string.h
+cstring
 -
-stdlib.h
+cstdlib
 -
-errno.h
+cerrno
 -
 modbus.h
 -
@@ -26,6 +26,10 @@ iostream
 fstream
 -
 pthread.h
+-
+thread
+-
+mutex
 -
 
 /usr/include/modbus/modbus-rtu.h
