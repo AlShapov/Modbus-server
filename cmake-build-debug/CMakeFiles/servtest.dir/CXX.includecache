@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/mnt/c/Users/sassh/CLionProjects/Modbus-server/main.cpp
+/mnt/c/Users/Л/CLionProjects/ModServ/Modbus-server/main.cpp
 cstdio
 -
 unistd.h
@@ -24,8 +24,6 @@ yaml.h
 iostream
 -
 fstream
--
-pthread.h
 -
 thread
 -

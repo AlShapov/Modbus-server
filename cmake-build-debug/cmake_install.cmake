@@ -1,4 +1,4 @@
-# Install script for directory: /mnt/c/Users/sassh/CLionProjects/Modbus-server
+# Install script for directory: /mnt/c/Users/Л/CLionProjects/ModServ/Modbus-server
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/mnt/c/Users/sassh/CLionProjects/Modbus-server/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/mnt/c/Users/Л/CLionProjects/ModServ/Modbus-server/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
