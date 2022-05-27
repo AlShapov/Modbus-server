@@ -604,7 +604,7 @@ void *sim_sensor(void *mapp_ctx){
             mb_mapping->tab_registers[BUF_SREZ] |= 0x0200;
         }
         // Если есть срез, то есть непрочитанные данные
-        if(mb_mapping->tab_registers[REG_SREZ_Q] != 0 && mb_mapping->tab_registers[REG_SREZ_Q] != 1){
+        if(mb_mapping->tab_registers[REG_SREZ_Q]){
             mb_mapping->tab_registers[BUF_SREZ] |= 0x0100;
         } else {
             mb_mapping->tab_registers[BUF_SREZ] &= 0xFEFF;
@@ -809,7 +809,7 @@ int serv(void* thrData) {
         // Запись в буфер квитирования
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == BUF_KVITIR) {
             if (query[header_length+6] % 2){
-                if (mb_mapping->tab_registers[REG_SREZ_Q] != 0 && mb_mapping->tab_registers[REG_SREZ_Q] != 1) {
+                if (mb_mapping->tab_registers[REG_SREZ_Q]) {
                     for (i = 0; i < mb_mapping->tab_registers[REG_SREZ_Q]; i++)
                         for (j = 0; j < 10; j++)
                             mb_mapping->tab_registers[BUF_SREZ+1 + 10 * i + j] = mb_mapping->tab_registers[BUF_SREZ+1 + 10 * (i+1) + j];
@@ -822,7 +822,7 @@ int serv(void* thrData) {
         }
 
         // Если есть срез, то есть непрочитанные данные
-        if(mb_mapping->tab_registers[REG_SREZ_Q] != 0 && mb_mapping->tab_registers[REG_SREZ_Q] != 1){
+        if(mb_mapping->tab_registers[REG_SREZ_Q]){
             mb_mapping->tab_registers[BUF_SREZ] |= 0x0100;
         } else {
             mb_mapping->tab_registers[BUF_SREZ] &= 0xFEFF;
