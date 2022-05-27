@@ -62,32 +62,32 @@ void * times(void *&mapping)
         if (mb_mapping->tab_registers[0x0C80] >= 999)
         {
             mb_mapping->tab_registers[0x0C80] = 0;
+            mb_mapping->tab_registers[0x0C81] += 0x100;
+        }
+        if (mb_mapping->tab_registers[0x0C81] / 0x100 >= 60)
+        {
+            mb_mapping->tab_registers[0x0C81]-=0x3C00;
             mb_mapping->tab_registers[0x0C81]++;
         }
         if (mb_mapping->tab_registers[0x0C81] % 0x100 >= 60)
         {
-            mb_mapping->tab_registers[0x0C81]-=60;
-            mb_mapping->tab_registers[0x0C81]+=0x100;
-        }
-        if (mb_mapping->tab_registers[0x0C81] / 0x100 >= 60)
-        {
             mb_mapping->tab_registers[0x0C81] = 0;
+            mb_mapping->tab_registers[0x0C82] += 0x100;
+        }
+        if (mb_mapping->tab_registers[0x0C82] / 0x100 >= 24)
+        {
+            mb_mapping->tab_registers[0x0C82]-=0x1800;
             mb_mapping->tab_registers[0x0C82]++;
         }
-        if (mb_mapping->tab_registers[0x0C82] % 0x100 >= 24)
+        if (mb_mapping->tab_registers[0x0C82] % 0x100 > 30)
         {
-            mb_mapping->tab_registers[0x0C82]-=24;
-            mb_mapping->tab_registers[0x0C82]+=0x100;
-        }
-        if (mb_mapping->tab_registers[0x0C82] / 0x100 > 30)
-        {
-            mb_mapping->tab_registers[0x0C82] = 0;
-            mb_mapping->tab_registers[0x0C83]++;
-        }
-        if (mb_mapping->tab_registers[0x0C83] % 0x100 > 12)
-        {
-            mb_mapping->tab_registers[0x0C83]-=12;
+            mb_mapping->tab_registers[0x0C82] = 0x0001;
             mb_mapping->tab_registers[0x0C83]+=0x100;
+        }
+        if (mb_mapping->tab_registers[0x0C83] / 0x100 > 12)
+        {
+            mb_mapping->tab_registers[0x0C83]-=0xC00;
+            mb_mapping->tab_registers[0x0C83]++;
         }
         meas_time.unlock();
 
@@ -103,11 +103,11 @@ void *curr_meas(void *&mapping){
         f_end_serv = mb_mapping->tab_registers[REG_END_SERV];
         end_serv.unlock();
         meas_time.lock();
-        srand(mb_mapping->tab_registers[0x0C81] % 0x100);
-        mb_mapping->tab_registers[0x0C84] = rand() % 50;
-        mb_mapping->tab_registers[0x0C85] = rand() % 35;
-        mb_mapping->tab_registers[0x0C86] = rand() % 3000 + 140;
-        mb_mapping->tab_registers[0x0C87] = rand() % 35;
+        srand(mb_mapping->tab_registers[0x0C81] / 0x100);
+        mb_mapping->tab_registers[0x0C84] = (rand() % 50) / 1.25;
+        mb_mapping->tab_registers[0x0C85] = (rand() % 35) / 0.061;
+        mb_mapping->tab_registers[0x0C86] = (rand() % 3000 + 140) / 0.0076;
+        mb_mapping->tab_registers[0x0C87] = (rand() % 35) / 0.134;
         meas_time.unlock();
         std::this_thread::sleep_for(std::chrono::seconds(5));
     } while(f_end_serv);
@@ -124,12 +124,12 @@ void *ctrl_order(void *&mapping){
         f_end_serv = mb_mapping->tab_registers[REG_END_SERV];
         end_serv.unlock();
         buf_st.lock();
-        cr_prik = mb_mapping->tab_registers[0x0D41] >> 15;
+        cr_prik = mb_mapping->tab_registers[0x0D41] >> 7;
         buf_st.unlock();
         if (cr_prik){
             std::this_thread::sleep_for(std::chrono::seconds(10));
             buf_st.lock();
-            mb_mapping->tab_registers[0x0D41] &= 0x7FFF;
+            mb_mapping->tab_registers[0x0D41] &= 0xFF7F;
             buf_st.unlock();
         }
         std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -164,74 +164,74 @@ void *sim_sensor(void *mapp_ctx){
                 buf_st.lock();
                 switch(num){
                     case 1:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 1) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFFFD;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 9) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFDFF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x2;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0200;
                         }
                         break;
                     case 2:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 3) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFFF7;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 11) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xF7FF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x8;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0800;
                         }
                         break;
                     case 3:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 5) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFFDF;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 13) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xDFFF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x20;
+                            mb_mapping->tab_registers[0x0D40] |= 0x2000;
                         }
                         break;
                     case 4:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 6) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFFBF;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 14) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xBFFF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x40;
+                            mb_mapping->tab_registers[0x0D40] |= 0x4000;
                         }
                         break;
                     case 5:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 7) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFF7F;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 15) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0x7FFF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x80;
+                            mb_mapping->tab_registers[0x0D40] |= 0x8000;
                         }
                         break;
                     case 6:
-                        mb_mapping->tab_registers[0x0D40] |= 0x100;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0001;
                         break;
                     case 7:
-                        mb_mapping->tab_registers[0x0D40] |= 0x200;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0002;
                         break;
                     case 8:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 10) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFBFF;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 2) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFFB;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x400;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0004;
                         }
                         break;
                     case 9:
-                        mb_mapping->tab_registers[0x0D40] |= 0x800;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0008;
                         break;
                     case 10:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 12) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xEFFF;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 4) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFEF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x1000;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0010;
                         }
                         break;
                     case 11:
-                        mb_mapping->tab_registers[0x0D41] |= 0x40;
+                        mb_mapping->tab_registers[0x0D41] |= 0x4000;
                         break;
                     case 12:
-                        mb_mapping->tab_registers[0x0D41] |= 0x80;
+                        mb_mapping->tab_registers[0x0D41] |= 0x8000;
                         break;
                     case 13:
-                        if ((mb_mapping->tab_registers[0x0D41] >> 8) % 2){
-                            mb_mapping->tab_registers[0x0D41] &= 0xFEFF;
+                        if (mb_mapping->tab_registers[0x0D41] % 2){
+                            mb_mapping->tab_registers[0x0D41] &= 0xFFFE;
                         } else{
-                            mb_mapping->tab_registers[0x0D41] |= 0x100;
+                            mb_mapping->tab_registers[0x0D41] |= 0x0001;
                         }
                         break;
                     default:
@@ -261,52 +261,52 @@ void *sim_sensor(void *mapp_ctx){
                 buf_st.lock();
                 switch(num){
                     case 1:
-                        mb_mapping->tab_registers[0x0D42] |= 0x1;
+                        mb_mapping->tab_registers[0x0D42] |= 0x0100;
                         break;
                     case 2:
-                        mb_mapping->tab_registers[0x0D42] |= 0x2;
+                        mb_mapping->tab_registers[0x0D42] |= 0x0200;
                         break;
                     case 3:
-                        mb_mapping->tab_registers[0x0D42] |= 0x4;
+                        mb_mapping->tab_registers[0x0D42] |= 0x0400;
                         break;
                     case 4:
-                        mb_mapping->tab_registers[0x0D42] |= 0x8;
+                        mb_mapping->tab_registers[0x0D42] |= 0x0800;
                         break;
                     case 5:
-                        mb_mapping->tab_registers[0x0D42] |= 0x10;
-                        break;
-                    case 6:
-                        mb_mapping->tab_registers[0x0D42] |= 0x20;
-                        break;
-                    case 7:
-                        mb_mapping->tab_registers[0x0D42] |= 0x40;
-                        break;
-                    case 8:
-                        mb_mapping->tab_registers[0x0D42] |= 0x80;
-                        break;
-                    case 9:
-                        mb_mapping->tab_registers[0x0D42] |= 0x100;
-                        break;
-                    case 10:
-                        mb_mapping->tab_registers[0x0D42] |= 0x200;
-                        break;
-                    case 11:
-                        mb_mapping->tab_registers[0x0D42] |= 0x400;
-                        break;
-                    case 12:
-                        mb_mapping->tab_registers[0x0D42] |= 0x800;
-                        break;
-                    case 13:
                         mb_mapping->tab_registers[0x0D42] |= 0x1000;
                         break;
-                    case 14:
+                    case 6:
+                        mb_mapping->tab_registers[0x0D42] |= 0x2000;
+                        break;
+                    case 7:
                         mb_mapping->tab_registers[0x0D42] |= 0x4000;
                         break;
-                    case 15:
+                    case 8:
                         mb_mapping->tab_registers[0x0D42] |= 0x8000;
                         break;
+                    case 9:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0001;
+                        break;
+                    case 10:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0002;
+                        break;
+                    case 11:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0004;
+                        break;
+                    case 12:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0008;
+                        break;
+                    case 13:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0010;
+                        break;
+                    case 14:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0040;
+                        break;
+                    case 15:
+                        mb_mapping->tab_registers[0x0D42] |= 0x0080;
+                        break;
                     case 16:
-                        mb_mapping->tab_registers[0x0D43] |= 0x100;
+                        mb_mapping->tab_registers[0x0D43] |= 0x0001;
                         break;
                     default:
                         std::cout << "Отсутствует.\n";
@@ -334,49 +334,49 @@ void *sim_sensor(void *mapp_ctx){
                 buf_st.lock();
                 switch(num){
                     case 1:
-                        mb_mapping->tab_registers[0x0D44] |= 0x1;
+                        mb_mapping->tab_registers[0x0D44] |= 0x0100;
                         break;
                     case 2:
-                        mb_mapping->tab_registers[0x0D44] |= 0x2;
+                        mb_mapping->tab_registers[0x0D44] |= 0x0200;
                         break;
                     case 3:
-                        mb_mapping->tab_registers[0x0D44] |= 0x4;
+                        mb_mapping->tab_registers[0x0D44] |= 0x0400;
                         break;
                     case 4:
-                        mb_mapping->tab_registers[0x0D44] |= 0x10;
-                        break;
-                    case 5:
-                        mb_mapping->tab_registers[0x0D44] |= 0x20;
-                        break;
-                    case 6:
-                        mb_mapping->tab_registers[0x0D44] |= 0x40;
-                        break;
-                    case 7:
-                        mb_mapping->tab_registers[0x0D44] |= 0x80;
-                        break;
-                    case 8:
-                        mb_mapping->tab_registers[0x0D44] |= 0x100;
-                        break;
-                    case 9:
-                        mb_mapping->tab_registers[0x0D44] |= 0x200;
-                        break;
-                    case 10:
-                        mb_mapping->tab_registers[0x0D44] |= 0x400;
-                        break;
-                    case 11:
-                        mb_mapping->tab_registers[0x0D44] |= 0x800;
-                        break;
-                    case 12:
                         mb_mapping->tab_registers[0x0D44] |= 0x1000;
                         break;
-                    case 13:
+                    case 5:
                         mb_mapping->tab_registers[0x0D44] |= 0x2000;
                         break;
-                    case 14:
+                    case 6:
                         mb_mapping->tab_registers[0x0D44] |= 0x4000;
                         break;
-                    case 15:
+                    case 7:
                         mb_mapping->tab_registers[0x0D44] |= 0x8000;
+                        break;
+                    case 8:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0001;
+                        break;
+                    case 9:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0002;
+                        break;
+                    case 10:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0004;
+                        break;
+                    case 11:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0008;
+                        break;
+                    case 12:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0010;
+                        break;
+                    case 13:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0020;
+                        break;
+                    case 14:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0040;
+                        break;
+                    case 15:
+                        mb_mapping->tab_registers[0x0D44] |= 0x0080;
                         break;
                     default:
                         std::cout << "Отсутствует.\n";
@@ -413,7 +413,7 @@ void *sim_sensor(void *mapp_ctx){
                 mb_mapping->tab_registers[REG_SREZ_Q]++;
             }
         } else {
-            mb_mapping->tab_registers[BUF_SREZ] |= 0x0002;
+            mb_mapping->tab_registers[BUF_SREZ] |= 0x0200;
         }
         // Если есть срез, то есть непрочитанные данные
         if(mb_mapping->tab_registers[REG_SREZ_Q]){
@@ -515,20 +515,20 @@ int serv(void* thrData) {
                 case 1: // БВ вкл/откл
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x1;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0100;
                         buf_st.unlock();
                     } else if (query[header_length+9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D40] &= 0xFFFE;
+                        mb_mapping->tab_registers[0x0D40] &= 0xFEFF;
                         buf_st.unlock();
                         // Изменение буфера накоп. информации
                         meas_time.lock();
                         for (i=0; i < 4; i++)
                             mb_mapping->tab_registers[0x0CC0 + i] = mb_mapping->tab_registers[0x0C80 + i];
                         mb_mapping->tab_registers[0x0CC4]++;
-                        srand(mb_mapping->tab_registers[0x0C81] % 0x100);
+                        srand(mb_mapping->tab_registers[0x0C81] / 0x100);
                         mb_mapping->tab_registers[0x0CC5] = rand() % 5;
-                        mb_mapping->tab_registers[0x0CC6] = rand();
-                        mb_mapping->tab_registers[0x0CC7] = rand() % 10;
+                        mb_mapping->tab_registers[0x0CC6] = rand() / 0.0065536;
+                        mb_mapping->tab_registers[0x0CC7] = (rand() % 10) / 80;
                         mb_mapping->tab_registers[0x0CCA] = mb_mapping->tab_registers[0x0C84];
                         mb_mapping->tab_registers[0x0CCB] = mb_mapping->tab_registers[0x0C85];
                         meas_time.unlock();
@@ -537,44 +537,44 @@ int serv(void* thrData) {
                 case 2: // ОР вкл/откл
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x4;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0400;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D40] &= 0xFFFB;
+                        mb_mapping->tab_registers[0x0D40] &= 0xFBFF;
                     }
                     buf_st.unlock();
                     break;
                 case 3: // ВЭ вкл/откл
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x10;
+                        mb_mapping->tab_registers[0x0D40] |= 0x1000;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D40] &= 0xFFEF;
+                        mb_mapping->tab_registers[0x0D40] &= 0xEFFF;
                     }
                     buf_st.unlock();
                     break;
                 case 4: // АПВ БВ ввести/вывести
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D41] |= 0x20;
+                        mb_mapping->tab_registers[0x0D41] |= 0x2000;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D41] &= 0xFFDF;
+                        mb_mapping->tab_registers[0x0D41] &= 0xDFFF;
                     }
                     buf_st.unlock();
                     break;
-                case 5: // Вкл уставку 2 / Вкл уставку 1 (взаимоисключение? добавить if в оба на проверку второго)
+                case 5: // Вкл уставку 2 / Вкл уставку 1
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x2000;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0020;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D41] |= 0x1000;
+                        mb_mapping->tab_registers[0x0D41] |= 0x0010;
                     }
                     buf_st.unlock();
                     break;
                 case 6: // Квитировать
                     if (query[header_length + 9] == 0x40) {
                         buf_st.lock();
-                        mb_mapping->tab_registers[0x0D40] &= 0xF4FF;
-                        mb_mapping->tab_registers[0x0D41] &= 0xFF1F;
+                        mb_mapping->tab_registers[0x0D40] &= 0xFFF4;
+                        mb_mapping->tab_registers[0x0D41] &= 0x1FFF;
                         mb_mapping->tab_registers[0x0D42] = 0;
                         mb_mapping->tab_registers[0x0D43] = 0;
                         mb_mapping->tab_registers[0x0D44] = 0;
@@ -609,12 +609,12 @@ int serv(void* thrData) {
                     mb_mapping->tab_registers[REG_SREZ_Q]++;
                 }
             } else {
-                mb_mapping->tab_registers[BUF_SREZ] |= 0x0002;
+                mb_mapping->tab_registers[BUF_SREZ] |= 0x0200;
             }
             buf_sr.unlock();
             // Бит контроля приказа взведен
             buf_st.lock();
-            mb_mapping->tab_registers[0x0D41] |= 0x8000;
+            mb_mapping->tab_registers[0x0D41] |= 0x0080;
             buf_st.unlock();
         }
 
@@ -630,7 +630,7 @@ int serv(void* thrData) {
                 }
             }
             if ((query[header_length+7] >> 1) % 2){
-                mb_mapping->tab_registers[BUF_SREZ] &= 0xFFFD;
+                mb_mapping->tab_registers[BUF_SREZ] &= 0xFDFF;
             }
         }
 
