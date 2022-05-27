@@ -1,1 +1,0 @@
-/usr/bin/c++  -pthread -g  -fsanitize=address CMakeFiles/servtest.dir/main.cpp.o  -o servtest  -lmodbus -lyaml-cpp -lmodbus -lyaml-cpp 

@@ -658,21 +658,21 @@ int serv(void* thrData) {
     int rc;
     int i;
     int j;
-    uint8_t *query;
+    std::vector<uint8_t> query;
     int header_length;
     header_length = modbus_get_header_length(ctx);
 
     if (use_backend == TCP) {
-        query = static_cast<uint8_t *>(malloc(MODBUS_TCP_MAX_ADU_LENGTH));
+        query.resize(MODBUS_TCP_MAX_ADU_LENGTH);
     } else {
-        query = static_cast<uint8_t *>(malloc(MODBUS_RTU_MAX_ADU_LENGTH));
+        query.resize(MODBUS_RTU_MAX_ADU_LENGTH);
     }
 
 
     for (;;) {
         // Пропуск пустых запросов серверу
         do {
-            rc = modbus_receive(ctx, query);
+            rc = modbus_receive(ctx, query.data());
         } while (rc == 0);
         if (rc == -1 && errno != EMBBADCRC) {
             break;
@@ -681,7 +681,7 @@ int serv(void* thrData) {
         meas_time.lock();
         buf_st.lock();
         buf_sr.lock();
-        rc = modbus_reply(ctx, query, rc, mb_mapping);
+        rc = modbus_reply(ctx, query.data(), rc, mb_mapping);
         meas_time.unlock();
         buf_st.unlock();
         buf_sr.unlock();
@@ -831,7 +831,6 @@ int serv(void* thrData) {
         }
     }
 
-    free(query);
     return 0;
 }
 
