@@ -47,9 +47,8 @@ struct mapp_wctx{
 };
 
 // Поток, считающий время
-void * times(void *&mapping)
+void times(modbus_mapping_t *mb_mapping)
 {
-    modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
     int kon_serv;
     do
     {
@@ -92,11 +91,9 @@ void * times(void *&mapping)
         meas_time.unlock();
 
     } while(kon_serv);
-    return nullptr;
 }
 // Поток, генерирующий текущие измерения
-void *curr_meas(void *&mapping){
-    modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
+void curr_meas(modbus_mapping_t *mb_mapping){
     int f_end_serv;
     do {
         end_serv.lock();
@@ -112,11 +109,9 @@ void *curr_meas(void *&mapping){
         std::this_thread::sleep_for(std::chrono::seconds(5));
     } while(f_end_serv);
 
-    return nullptr;
 }
 // Поток, сохраняющий контроль приказа
-void *ctrl_order(void *&mapping){
-    modbus_mapping_t *mb_mapping = (modbus_mapping_t*) mapping;
+void ctrl_order(modbus_mapping_t *mb_mapping){
     int f_end_serv;
     int cr_prik;
     do {
@@ -134,13 +129,9 @@ void *ctrl_order(void *&mapping){
         }
         std::this_thread::sleep_for(std::chrono::seconds(3));
     } while(f_end_serv);
-    return nullptr;
 }
 // Поток симулирования сквитирований
-void *sim_sensor(void *mapp_ctx){
-    mapp_wctx *data = (mapp_wctx*) mapp_ctx;
-    modbus_mapping_t* mb_mapping = data->mapping;
-    modbus_t *ctx = data->ctx;
+void sim_sensor(modbus_mapping_t *mb_mapping, modbus_t *ctx){
     int num;
     while (mb_mapping->tab_registers[REG_END_SERV]){
         std::cout << "Какой буфер? \n1.Буфер статуса\n2.Буфер ВЫЗОВ\n3.Буфер защит ЦЗА\n0.Выключение сервера\n";
@@ -611,7 +602,6 @@ void *sim_sensor(void *mapp_ctx){
         }
         buf_sr.unlock();
     }
-    return nullptr;
 }
 
 // Перевод 16-ричного числа в строку
@@ -904,10 +894,10 @@ int main(int argc, char*argv[])
     thr_sens.ctx=ctxs;
 
     // Запуск потоков
-    std::thread thr1(reinterpret_cast<void *(*)(void *)>(times), &mb_mapping);
-    std::thread thr2(reinterpret_cast<void *(*)(void *)>(ctrl_order), &mb_mapping);
-    std::thread thr3(reinterpret_cast<void *(*)(void *)>(sim_sensor), &thr_sens);
-    std::thread thr4(reinterpret_cast<void *(*)(void *)>(curr_meas), &mb_mapping);
+    std::thread thr1(times, mb_mapping);
+    std::thread thr2(ctrl_order, mb_mapping);
+    std::thread thr3(sim_sensor, mb_mapping, ctxs);
+    std::thread thr4(curr_meas, mb_mapping);
 
 
     std::vector<std::thread> threads;
