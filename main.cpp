@@ -147,87 +147,119 @@ void *sim_sensor(void *mapp_ctx){
         std::cin >> num;
         switch(num){
             case 1:
-                std::cout << "1.Цепи сигнал. БВ не исправны/исправны.\n";
-                std::cout << "2.Цепи сигнал. ОР не исправны/исправны.\n";
-                std::cout << "3.Цепи сигнал. ВЭ не исправны/исправны.\n";
-                std::cout << "4.ЗР включен/отключен.\n";
-                std::cout << "5.Цепи сигнал. ЗР не исправны/исправны.\n";
-                std::cout << "6.Аварийная сигнал. сработала.\n";
-                std::cout << "7.Предупредит. сигнал. (ВЫЗОВ) сработала.\n";
-                std::cout << "8.Местное управлеие включено/отключено.\n";
-                std::cout << "9.ОТКАЗ призошел.\n";
-                std::cout << "10.ОКЦ не в норме/в норме.\n";
-                std::cout << "11.Успешное АПВ БВ произошло.\n";
-                std::cout << "12.Неуспешное АПВ БВ произошло.\n";
-                std::cout << "13.Перегрев контактного провода есть/нет.\n";
+                std::cout << "1.БВ ключен/отключен>.\n";
+                std::cout << "2.Цепи сигнал. БВ не исправны/исправны.\n";
+                std::cout << "3.ОР включен/отклоючен.\n";
+                std::cout << "4.Цепи сигнал. ОР не исправны/исправны.\n";
+                std::cout << "5.ВЭ рабочее/контрольное.\n";
+                std::cout << "6.Цепи сигнал. ВЭ не исправны/исправны.\n";
+                std::cout << "7.ЗР включен/отключен.\n";
+                std::cout << "8.Цепи сигнал. ЗР не исправны/исправны.\n";
+                std::cout << "9.Аварийная сигнал. сработала.\n";
+                std::cout << "10.Предупредит. сигнал. (ВЫЗОВ) сработала.\n";
+                std::cout << "11.Местное управлеие включено/отключено.\n";
+                std::cout << "12.ОТКАЗ призошел.\n";
+                std::cout << "13.ОКЦ не в норме/в норме.\n";
+                std::cout << "14.АПВ БВ введено/выведено.\n";
+                std::cout << "15.Успешное АПВ БВ произошло.\n";
+                std::cout << "16.Неуспешное АПВ БВ произошло.\n";
+                std::cout << "17.Перегрев контактного провода есть/нет.\n";
                 std::cin >> num;
                 buf_st.lock();
                 switch(num){
                     case 1:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 8) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFEFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0100;
+                        }
+                        break;
+                    case 2:
                         if ((mb_mapping->tab_registers[0x0D40] >> 9) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xFDFF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0200;
                         }
                         break;
-                    case 2:
+                    case 3:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 10) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFBFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0400;
+                        }
+                        break;
+                    case 4:
                         if ((mb_mapping->tab_registers[0x0D40] >> 11) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xF7FF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0800;
                         }
                         break;
-                    case 3:
+                    case 5:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 12) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xEFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x1000;
+                        }
+                        break;
+                    case 6:
                         if ((mb_mapping->tab_registers[0x0D40] >> 13) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xDFFF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x2000;
                         }
                         break;
-                    case 4:
+                    case 7:
                         if ((mb_mapping->tab_registers[0x0D40] >> 14) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xBFFF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x4000;
                         }
                         break;
-                    case 5:
+                    case 8:
                         if ((mb_mapping->tab_registers[0x0D40] >> 15) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0x7FFF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x8000;
                         }
                         break;
-                    case 6:
+                    case 9:
                         mb_mapping->tab_registers[0x0D40] |= 0x0001;
                         break;
-                    case 7:
+                    case 10:
                         mb_mapping->tab_registers[0x0D40] |= 0x0002;
                         break;
-                    case 8:
+                    case 11:
                         if ((mb_mapping->tab_registers[0x0D40] >> 2) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xFFFB;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0004;
                         }
                         break;
-                    case 9:
+                    case 12:
                         mb_mapping->tab_registers[0x0D40] |= 0x0008;
                         break;
-                    case 10:
+                    case 13:
                         if ((mb_mapping->tab_registers[0x0D40] >> 4) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xFFEF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0010;
                         }
                         break;
-                    case 11:
+                    case 14:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 13) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xDFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x2000;
+                        }
+                        break;
+                    case 15:
                         mb_mapping->tab_registers[0x0D41] |= 0x4000;
                         break;
-                    case 12:
+                    case 16:
                         mb_mapping->tab_registers[0x0D41] |= 0x8000;
                         break;
-                    case 13:
+                    case 17:
                         if (mb_mapping->tab_registers[0x0D41] % 2){
                             mb_mapping->tab_registers[0x0D41] &= 0xFFFE;
                         } else{
@@ -621,7 +653,7 @@ int serv(void* thrData) {
         buf_sr.lock();
         // Запись в буфер квитирования
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == BUF_KVITIR) {
-            if (query[header_length+7] % 2){
+            if (query[header_length+6] % 2){
                 if (mb_mapping->tab_registers[REG_SREZ_Q]) {
                     for (i = 0; i < mb_mapping->tab_registers[REG_SREZ_Q]; i++)
                         for (j = 0; j < 10; j++)
@@ -629,7 +661,7 @@ int serv(void* thrData) {
                     mb_mapping->tab_registers[REG_SREZ_Q]--;
                 }
             }
-            if ((query[header_length+7] >> 1) % 2){
+            if ((query[header_length+6] >> 1) % 2){
                 mb_mapping->tab_registers[BUF_SREZ] &= 0xFDFF;
             }
         }
