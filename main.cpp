@@ -41,10 +41,6 @@ struct threadData{
     threadData(int use_backend, modbus_mapping_t *mapping, modbus_t *ctx): use_backend(use_backend), mapping(mapping), ctx(ctx){}
 
 };
-struct mapp_wctx{
-    modbus_mapping_t *mapping;
-    modbus_t *ctx;
-};
 
 // Поток, считающий время
 void times(modbus_mapping_t *mb_mapping)
@@ -682,7 +678,13 @@ int serv(void* thrData) {
             break;
         }
 
+        meas_time.lock();
+        buf_st.lock();
+        buf_sr.lock();
         rc = modbus_reply(ctx, query, rc, mb_mapping);
+        meas_time.unlock();
+        buf_st.unlock();
+        buf_sr.unlock();
         if (rc == -1) {
             break;
         }
@@ -889,10 +891,6 @@ int main(int argc, char*argv[])
         modbus_set_slave(ctxs, SERVER_ID);
     }
 
-    mapp_wctx thr_sens{};
-    thr_sens.mapping=mb_mapping;
-    thr_sens.ctx=ctxs;
-
     // Запуск потоков
     std::thread thr1(times, mb_mapping);
     std::thread thr2(ctrl_order, mb_mapping);
@@ -967,3 +965,41 @@ int main(int argc, char*argv[])
     }
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
