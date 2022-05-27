@@ -170,6 +170,18 @@ void *sim_sensor(void *mapp_ctx){
                     case 1:
                         if ((mb_mapping->tab_registers[0x0D40] >> 8) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xFEFF;
+                            // Изменение буфера накоп. информации
+                            meas_time.lock();
+                            for (int i=0; i < 4; i++)
+                                mb_mapping->tab_registers[0x0CC0 + i] = mb_mapping->tab_registers[0x0C80 + i];
+                            mb_mapping->tab_registers[0x0CC4]++;
+                            srand(mb_mapping->tab_registers[0x0C81] / 0x100);
+                            mb_mapping->tab_registers[0x0CC5]++;
+                            mb_mapping->tab_registers[0x0CC6] = rand() / 0.0065536;
+                            mb_mapping->tab_registers[0x0CC7] = (rand() % 10) / 80;
+                            mb_mapping->tab_registers[0x0CCA] = mb_mapping->tab_registers[0x0C84];
+                            mb_mapping->tab_registers[0x0CCB] = mb_mapping->tab_registers[0x0C85];
+                            meas_time.unlock();
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0100;
                         }
@@ -558,7 +570,6 @@ int serv(void* thrData) {
                             mb_mapping->tab_registers[0x0CC0 + i] = mb_mapping->tab_registers[0x0C80 + i];
                         mb_mapping->tab_registers[0x0CC4]++;
                         srand(mb_mapping->tab_registers[0x0C81] / 0x100);
-                        mb_mapping->tab_registers[0x0CC5] = rand() % 5;
                         mb_mapping->tab_registers[0x0CC6] = rand() / 0.0065536;
                         mb_mapping->tab_registers[0x0CC7] = (rand() % 10) / 80;
                         mb_mapping->tab_registers[0x0CCA] = mb_mapping->tab_registers[0x0C84];
