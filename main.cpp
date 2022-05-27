@@ -149,27 +149,27 @@ void *sim_sensor(void *mapp_ctx){
             case 1:
                 std::cout << "1.БВ ключен/отключен>.\n";
                 std::cout << "2.Цепи сигнал. БВ не исправны/исправны.\n";
-                std::cout << "3.ОР включен/отклоючен.\n";
+                std::cout << "3.ОР включен/отключен.\n";
                 std::cout << "4.Цепи сигнал. ОР не исправны/исправны.\n";
                 std::cout << "5.ВЭ рабочее/контрольное.\n";
                 std::cout << "6.Цепи сигнал. ВЭ не исправны/исправны.\n";
                 std::cout << "7.ЗР включен/отключен.\n";
                 std::cout << "8.Цепи сигнал. ЗР не исправны/исправны.\n";
-                std::cout << "9.Аварийная сигнал. сработала.\n";
-                std::cout << "10.Предупредит. сигнал. (ВЫЗОВ) сработала.\n";
+                std::cout << "9.Аварийная сигнал. сработала/сквитирована.\n";
+                std::cout << "10.Предупредит. сигнал. (ВЫЗОВ) сработала/сквитировано.\n";
                 std::cout << "11.Местное управлеие включено/отключено.\n";
-                std::cout << "12.ОТКАЗ призошел.\n";
+                std::cout << "12.ОТКАЗ призошел/сквитировано.\n";
                 std::cout << "13.ОКЦ не в норме/в норме.\n";
                 std::cout << "14.АПВ БВ введено/выведено.\n";
-                std::cout << "15.Успешное АПВ БВ произошло.\n";
-                std::cout << "16.Неуспешное АПВ БВ произошло.\n";
+                std::cout << "15.Успешное АПВ БВ произошло/сквитировано.\n";
+                std::cout << "16.Неуспешное АПВ БВ произошло/сквитировано.\n";
                 std::cout << "17.Перегрев контактного провода есть/нет.\n";
                 std::cin >> num;
                 buf_st.lock();
                 switch(num){
                     case 1:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 8) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFEFF;
+                        if (mb_mapping->tab_registers[0x0D40] % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFFE;
                             // Изменение буфера накоп. информации
                             meas_time.lock();
                             for (int i=0; i < 4; i++)
@@ -183,99 +183,119 @@ void *sim_sensor(void *mapp_ctx){
                             mb_mapping->tab_registers[0x0CCB] = mb_mapping->tab_registers[0x0C85];
                             meas_time.unlock();
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x0100;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0001;
                         }
                         break;
                     case 2:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 9) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFDFF;
+                        if ((mb_mapping->tab_registers[0x0D40] >> 1) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFFD;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x0200;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0002;
                         }
                         break;
                     case 3:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 10) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xFBFF;
-                        } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x0400;
-                        }
-                        break;
-                    case 4:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 11) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xF7FF;
-                        } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x0800;
-                        }
-                        break;
-                    case 5:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 12) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xEFFF;
-                        } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x1000;
-                        }
-                        break;
-                    case 6:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 13) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xDFFF;
-                        } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x2000;
-                        }
-                        break;
-                    case 7:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 14) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xBFFF;
-                        } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x4000;
-                        }
-                        break;
-                    case 8:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 15) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0x7FFF;
-                        } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x8000;
-                        }
-                        break;
-                    case 9:
-                        mb_mapping->tab_registers[0x0D40] |= 0x0001;
-                        break;
-                    case 10:
-                        mb_mapping->tab_registers[0x0D40] |= 0x0002;
-                        break;
-                    case 11:
                         if ((mb_mapping->tab_registers[0x0D40] >> 2) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xFFFB;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0004;
                         }
                         break;
-                    case 12:
-                        mb_mapping->tab_registers[0x0D40] |= 0x0008;
+                    case 4:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 3) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFF7;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0008;
+                        }
                         break;
-                    case 13:
+                    case 5:
                         if ((mb_mapping->tab_registers[0x0D40] >> 4) % 2){
                             mb_mapping->tab_registers[0x0D40] &= 0xFFEF;
                         } else{
                             mb_mapping->tab_registers[0x0D40] |= 0x0010;
                         }
                         break;
-                    case 14:
-                        if ((mb_mapping->tab_registers[0x0D40] >> 13) % 2){
-                            mb_mapping->tab_registers[0x0D40] &= 0xDFFF;
+                    case 6:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 5) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFDF;
                         } else{
-                            mb_mapping->tab_registers[0x0D40] |= 0x2000;
+                            mb_mapping->tab_registers[0x0D40] |= 0x0020;
+                        }
+                        break;
+                    case 7:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 6) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFFBF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0040;
+                        }
+                        break;
+                    case 8:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 7) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFF7F;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0080;
+                        }
+                        break;
+                    case 9:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 8) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFEFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0100;
+                        }
+                        break;
+                    case 10:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 9) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFDFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0200;
+                        }
+                        break;
+                    case 11:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 10) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xFBFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0400;
+                        }
+                        break;
+                    case 12:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 11) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xF7FF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x0800;
+                        }
+                        break;
+                    case 13:
+                        if ((mb_mapping->tab_registers[0x0D40] >> 12) % 2){
+                            mb_mapping->tab_registers[0x0D40] &= 0xEFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D40] |= 0x1000;
+                        }
+                        break;
+                    case 14:
+                        if ((mb_mapping->tab_registers[0x0D41] >> 5) % 2){
+                            mb_mapping->tab_registers[0x0D41] &= 0xFFDF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D41] |= 0x0020;
                         }
                         break;
                     case 15:
-                        mb_mapping->tab_registers[0x0D41] |= 0x4000;
+                        if ((mb_mapping->tab_registers[0x0D41] >> 6) % 2){
+                            mb_mapping->tab_registers[0x0D41] &= 0xFFBF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D41] |= 0x0040;
+                        }
                         break;
                     case 16:
-                        mb_mapping->tab_registers[0x0D41] |= 0x8000;
+                        if ((mb_mapping->tab_registers[0x0D41] >> 7) % 2){
+                            mb_mapping->tab_registers[0x0D41] &= 0xFF7F;
+                        } else{
+                            mb_mapping->tab_registers[0x0D41] |= 0x0080;
+                        }
                         break;
                     case 17:
-                        if (mb_mapping->tab_registers[0x0D41] % 2){
-                            mb_mapping->tab_registers[0x0D41] &= 0xFFFE;
+                        if ((mb_mapping->tab_registers[0x0D41] >> 8) % 2){
+                            mb_mapping->tab_registers[0x0D41] &= 0xFEFF;
                         } else{
-                            mb_mapping->tab_registers[0x0D41] |= 0x0001;
+                            mb_mapping->tab_registers[0x0D41] |= 0x0100;
                         }
                         break;
                     default:
@@ -285,72 +305,136 @@ void *sim_sensor(void *mapp_ctx){
                 buf_st.unlock();
                 break;
             case 2:
-                std::cout << "1.Неисправность БВ есть.\n";
-                std::cout << "2.Неисправность ОР есть.\n";
-                std::cout << "3.Неисправность цепей сигнал. ЗР есть.\n";
-                std::cout << "4.Неисправность цепей сигнал. БВ есть.\n";
-                std::cout << "5.Неисправность цепей сигнал. ОР есть.\n";
-                std::cout << "6.Неисправность цепей сигнал. ВЭ есть.\n";
-                std::cout << "7.Неисправность ИнТер есть.\n";
-                std::cout << "8.Ограничение ресурса БВ есть.\n";
-                std::cout << "9.Питание ШУ отсутсвует.\n";
-                std::cout << "10.Питание ШВ отсутсвует.\n";
-                std::cout << "11.Питание ОР отсутствует.\n";
-                std::cout << "12.Питание цепей управления ОР, ВЭ отсутствует.\n";
-                std::cout << "13.Питание привода ВЭ отсутствует.\n";
-                std::cout << "14.Срабатывание ИКЗ произошло.\n";
-                std::cout << "15.Неисправность ВЭ есть.\n";
-                std::cout << "16.Перегрев контактного провода есть.\n";
+                std::cout << "1.Неисправность БВ есть/сквитировано.\n";
+                std::cout << "2.Неисправность ОР есть/сквитировано.\n";
+                std::cout << "3.Неисправность цепей сигнал. ЗР есть/сквитировано.\n";
+                std::cout << "4.Неисправность цепей сигнал. БВ есть/сквитировано.\n";
+                std::cout << "5.Неисправность цепей сигнал. ОР есть/сквитировано.\n";
+                std::cout << "6.Неисправность цепей сигнал. ВЭ есть/сквитировано.\n";
+                std::cout << "7.Неисправность ИнТер есть/сквитировано.\n";
+                std::cout << "8.Ограничение ресурса БВ есть/сквитировано.\n";
+                std::cout << "9.Питание ШУ отсутсвует/сквитировано.\n";
+                std::cout << "10.Питание ШВ отсутсвует/сквитировано.\n";
+                std::cout << "11.Питание ОР отсутствует/сквитировано.\n";
+                std::cout << "12.Питание цепей управления ОР, ВЭ отсутствует/сквитировано.\n";
+                std::cout << "13.Питание привода ВЭ отсутствует/сквитировано.\n";
+                std::cout << "14.Срабатывание ИКЗ произошло/сквитировано.\n";
+                std::cout << "15.Неисправность ВЭ есть/сквитировано.\n";
+                std::cout << "16.Перегрев контактного провода есть/сквитировано.\n";
                 std::cin >> num;
                 buf_st.lock();
                 switch(num){
                     case 1:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0100;
+                        if (mb_mapping->tab_registers[0x0D42] % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFFE;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0001;
+                        }
                         break;
                     case 2:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0200;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 1) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFFD;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0002;
+                        }
                         break;
                     case 3:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0400;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 2) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFFB;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0004;
+                        }
                         break;
                     case 4:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0800;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 3) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFF7;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0008;
+                        }
                         break;
                     case 5:
-                        mb_mapping->tab_registers[0x0D42] |= 0x1000;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 4) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFEF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0010;
+                        }
                         break;
                     case 6:
-                        mb_mapping->tab_registers[0x0D42] |= 0x2000;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 5) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFDF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0020;
+                        }
                         break;
                     case 7:
-                        mb_mapping->tab_registers[0x0D42] |= 0x4000;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 6) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFFBF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0040;
+                        }
                         break;
                     case 8:
-                        mb_mapping->tab_registers[0x0D42] |= 0x8000;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 7) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFF7F;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0080;
+                        }
                         break;
                     case 9:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0001;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 8) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFEFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0100;
+                        }
                         break;
                     case 10:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0002;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 9) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFDFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0200;
+                        }
                         break;
                     case 11:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0004;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 10) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xFBFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0400;
+                        }
                         break;
                     case 12:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0008;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 11) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xF7FF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x0800;
+                        }
                         break;
                     case 13:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0010;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 12) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xEFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x1000;
+                        }
                         break;
                     case 14:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0040;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 14) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0xBFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x4000;
+                        }
                         break;
                     case 15:
-                        mb_mapping->tab_registers[0x0D42] |= 0x0080;
+                        if ((mb_mapping->tab_registers[0x0D42] >> 15) % 2){
+                            mb_mapping->tab_registers[0x0D42] &= 0x7FFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D42] |= 0x8000;
+                        }
                         break;
                     case 16:
-                        mb_mapping->tab_registers[0x0D43] |= 0x0001;
+                        if ((mb_mapping->tab_registers[0x0D43] >> 8) % 2){
+                            mb_mapping->tab_registers[0x0D43] &= 0xFEFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D43] |= 0x0100;
+                        }
                         break;
                     default:
                         std::cout << "Отсутствует.\n";
@@ -359,68 +443,128 @@ void *sim_sensor(void *mapp_ctx){
                 buf_st.unlock();
                 break;
             case 3:
-                std::cout << "1.3 ступень МТЗ сработала.\n";
-                std::cout << "2.Ресурс БВ исчерпан.\n";
-                std::cout << "3.НЦС БВ сработала.\n";
-                std::cout << "4.ДЗ сработала.\n";
-                std::cout << "5.ЗМН сработала.\n";
-                std::cout << "6.Внешняя защита БВ сработала.\n";
-                std::cout << "7.Самопроизвольное отключение БВ произошло.\n";
-                std::cout << "8.1 ступень МТЗ сработала.\n";
-                std::cout << "9.2 ступень МТЗ сработала.\n";
-                std::cout << "10.ЗПТ сработала.\n";
-                std::cout << "11.ЗСНТ сработала.\n";
-                std::cout << "12.ПТЗ сработала.\n";
-                std::cout << "13.МТЗ отриц. сработала.\n";
-                std::cout << "14.АСЗ сработала.\n";
-                std::cout << "15.КвТЗ сработала.\n";
+                std::cout << "1.3 ступень МТЗ сработала/сквитировано.\n";
+                std::cout << "2.Ресурс БВ исчерпан/сквитировано.\n";
+                std::cout << "3.НЦС БВ сработала/сквитировано.\n";
+                std::cout << "4.ДЗ сработала/сквитировано.\n";
+                std::cout << "5.ЗМН сработала/сквитировано.\n";
+                std::cout << "6.Внешняя защита БВ сработала/сквитировано.\n";
+                std::cout << "7.Самопроизвольное отключение БВ произошло/сквитировано.\n";
+                std::cout << "8.1 ступень МТЗ сработала/сквитировано.\n";
+                std::cout << "9.2 ступень МТЗ сработала/сквитировано.\n";
+                std::cout << "10.ЗПТ сработала/сквитировано.\n";
+                std::cout << "11.ЗСНТ сработала/сквитировано.\n";
+                std::cout << "12.ПТЗ сработала/сквитировано.\n";
+                std::cout << "13.МТЗ отриц. сработала/сквитировано.\n";
+                std::cout << "14.АСЗ сработала/сквитировано.\n";
+                std::cout << "15.КвТЗ сработала/сквитировано.\n";
                 std::cin >> num;
                 buf_st.lock();
                 switch(num){
                     case 1:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0100;
+                        if ((mb_mapping->tab_registers[0x0D44]) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFFFE;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x1;
+                        }
                         break;
                     case 2:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0200;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 1) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFFFD;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x2;
+                        }
                         break;
                     case 3:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0400;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 2) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFFFB;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x4;
+                        }
                         break;
                     case 4:
-                        mb_mapping->tab_registers[0x0D44] |= 0x1000;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 4) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFFEF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x10;
+                        }
                         break;
                     case 5:
-                        mb_mapping->tab_registers[0x0D44] |= 0x2000;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 5) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFFDF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x20;
+                        }
                         break;
                     case 6:
-                        mb_mapping->tab_registers[0x0D44] |= 0x4000;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 6) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFFBF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x40;
+                        }
                         break;
                     case 7:
-                        mb_mapping->tab_registers[0x0D44] |= 0x8000;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 7) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFF7F;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x80;
+                        }
                         break;
                     case 8:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0001;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 8) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFEFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x100;
+                        }
                         break;
                     case 9:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0002;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 9) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFDFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x200;
+                        }
                         break;
                     case 10:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0004;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 10) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xFBFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x400;
+                        }
                         break;
                     case 11:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0008;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 11) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xF7FF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x800;
+                        }
                         break;
                     case 12:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0010;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 12) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xEFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x1000;
+                        }
                         break;
                     case 13:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0020;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 13) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xDFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x2000;
+                        }
                         break;
                     case 14:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0040;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 14) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0xBFFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x4000;
+                        }
                         break;
                     case 15:
-                        mb_mapping->tab_registers[0x0D44] |= 0x0080;
+                        if ((mb_mapping->tab_registers[0x0D44] >> 15) % 2){
+                            mb_mapping->tab_registers[0x0D44] &= 0x7FFF;
+                        } else{
+                            mb_mapping->tab_registers[0x0D44] |= 0x8000;
+                        }
                         break;
                     default:
                         std::cout << "Отсутствует.\n";
