@@ -124,12 +124,12 @@ void *ctrl_order(void *&mapping){
         f_end_serv = mb_mapping->tab_registers[REG_END_SERV];
         end_serv.unlock();
         buf_st.lock();
-        cr_prik = mb_mapping->tab_registers[0x0D41] >> 7;
+        cr_prik = mb_mapping->tab_registers[0x0D41] >> 15;
         buf_st.unlock();
         if (cr_prik){
             std::this_thread::sleep_for(std::chrono::seconds(10));
             buf_st.lock();
-            mb_mapping->tab_registers[0x0D41] &= 0xFF7F;
+            mb_mapping->tab_registers[0x0D41] &= 0x7FFF;
             buf_st.unlock();
         }
         std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -147,7 +147,7 @@ void *sim_sensor(void *mapp_ctx){
         std::cin >> num;
         switch(num){
             case 1:
-                std::cout << "1.БВ ключен/отключен>.\n";
+                std::cout << "1.БВ включен/отключен.\n";
                 std::cout << "2.Цепи сигнал. БВ не исправны/исправны.\n";
                 std::cout << "3.ОР включен/отключен.\n";
                 std::cout << "4.Цепи сигнал. ОР не исправны/исправны.\n";
@@ -703,10 +703,10 @@ int serv(void* thrData) {
                 case 1: // БВ вкл/откл
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x0100;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0001;
                         buf_st.unlock();
                     } else if (query[header_length+9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D40] &= 0xFEFF;
+                        mb_mapping->tab_registers[0x0D40] &= 0xFFFE;
                         buf_st.unlock();
                         // Изменение буфера накоп. информации
                         meas_time.lock();
@@ -724,44 +724,44 @@ int serv(void* thrData) {
                 case 2: // ОР вкл/откл
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x0400;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0004;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D40] &= 0xFBFF;
+                        mb_mapping->tab_registers[0x0D40] &= 0xFFFB;
                     }
                     buf_st.unlock();
                     break;
                 case 3: // ВЭ вкл/откл
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x1000;
+                        mb_mapping->tab_registers[0x0D40] |= 0x0010;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D40] &= 0xEFFF;
+                        mb_mapping->tab_registers[0x0D40] &= 0xFFEF;
                     }
                     buf_st.unlock();
                     break;
                 case 4: // АПВ БВ ввести/вывести
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D41] |= 0x2000;
+                        mb_mapping->tab_registers[0x0D41] |= 0x0020;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D41] &= 0xDFFF;
+                        mb_mapping->tab_registers[0x0D41] &= 0xFFDF;
                     }
                     buf_st.unlock();
                     break;
                 case 5: // Вкл уставку 2 / Вкл уставку 1
                     buf_st.lock();
                     if (query[header_length + 9] == 0x40) {
-                        mb_mapping->tab_registers[0x0D40] |= 0x0020;
+                        mb_mapping->tab_registers[0x0D40] |= 0x2000;
                     } else if (query[header_length + 9] == 0x20) {
-                        mb_mapping->tab_registers[0x0D41] |= 0x0010;
+                        mb_mapping->tab_registers[0x0D41] |= 0x1000;
                     }
                     buf_st.unlock();
                     break;
                 case 6: // Квитировать
                     if (query[header_length + 9] == 0x40) {
                         buf_st.lock();
-                        mb_mapping->tab_registers[0x0D40] &= 0xFFF4;
-                        mb_mapping->tab_registers[0x0D41] &= 0x1FFF;
+                        mb_mapping->tab_registers[0x0D40] &= 0xF4FF;
+                        mb_mapping->tab_registers[0x0D41] &= 0xFF3F;
                         mb_mapping->tab_registers[0x0D42] = 0;
                         mb_mapping->tab_registers[0x0D43] = 0;
                         mb_mapping->tab_registers[0x0D44] = 0;
@@ -801,7 +801,7 @@ int serv(void* thrData) {
             buf_sr.unlock();
             // Бит контроля приказа взведен
             buf_st.lock();
-            mb_mapping->tab_registers[0x0D41] |= 0x0080;
+            mb_mapping->tab_registers[0x0D41] |= 0x8000;
             buf_st.unlock();
         }
 
