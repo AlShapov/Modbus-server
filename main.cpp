@@ -591,11 +591,11 @@ void *sim_sensor(void *mapp_ctx){
             if (num){
                 buf_st.lock();
                 for(int i=0; i < 6; i++)
-                    mb_mapping->tab_registers[BUF_SREZ+1 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]+1) + i] = mb_mapping->tab_registers[0x0D40 + i];
+                    mb_mapping->tab_registers[BUF_SREZ+1 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]) + i] = mb_mapping->tab_registers[0x0D40 + i];
                 buf_st.unlock();
                 meas_time.lock();
                 for(int i=0; i < 4; i++)
-                    mb_mapping->tab_registers[BUF_SREZ+7 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]+1) + i] = mb_mapping->tab_registers[0x0C80 + i];
+                    mb_mapping->tab_registers[BUF_SREZ+7 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]) + i] = mb_mapping->tab_registers[0x0C80 + i];
                 meas_time.unlock();
 
                 mb_mapping->tab_registers[REG_SREZ_Q]++;
@@ -604,7 +604,7 @@ void *sim_sensor(void *mapp_ctx){
             mb_mapping->tab_registers[BUF_SREZ] |= 0x0200;
         }
         // Если есть срез, то есть непрочитанные данные
-        if(mb_mapping->tab_registers[REG_SREZ_Q]){
+        if(mb_mapping->tab_registers[REG_SREZ_Q] != 0 && mb_mapping->tab_registers[REG_SREZ_Q] != 1){
             mb_mapping->tab_registers[BUF_SREZ] |= 0x0100;
         } else {
             mb_mapping->tab_registers[BUF_SREZ] &= 0xFEFF;
@@ -786,11 +786,11 @@ int serv(void* thrData) {
                 if (query[header_length+7] != 7  && query[header_length+7] != 8){
                     buf_st.lock();
                     for(i=0; i < 6; i++)
-                        mb_mapping->tab_registers[BUF_SREZ+1 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]+1) + i] = mb_mapping->tab_registers[0x0D40 + i];
+                        mb_mapping->tab_registers[BUF_SREZ+1 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]) + i] = mb_mapping->tab_registers[0x0D40 + i];
                     buf_st.unlock();
                     meas_time.lock();
                     for(i=0; i < 4; i++)
-                        mb_mapping->tab_registers[BUF_SREZ+7 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]+1) + i] = mb_mapping->tab_registers[0x0C80 + i];
+                        mb_mapping->tab_registers[BUF_SREZ+7 + 10 * (mb_mapping->tab_registers[REG_SREZ_Q]) + i] = mb_mapping->tab_registers[0x0C80 + i];
                     meas_time.unlock();
 
                     mb_mapping->tab_registers[REG_SREZ_Q]++;
@@ -809,7 +809,7 @@ int serv(void* thrData) {
         // Запись в буфер квитирования
         if (MODBUS_GET_INT16_FROM_INT8(query, header_length + 1) == BUF_KVITIR) {
             if (query[header_length+6] % 2){
-                if (mb_mapping->tab_registers[REG_SREZ_Q]) {
+                if (mb_mapping->tab_registers[REG_SREZ_Q] != 0 && mb_mapping->tab_registers[REG_SREZ_Q] != 1) {
                     for (i = 0; i < mb_mapping->tab_registers[REG_SREZ_Q]; i++)
                         for (j = 0; j < 10; j++)
                             mb_mapping->tab_registers[BUF_SREZ+1 + 10 * i + j] = mb_mapping->tab_registers[BUF_SREZ+1 + 10 * (i+1) + j];
@@ -822,7 +822,7 @@ int serv(void* thrData) {
         }
 
         // Если есть срез, то есть непрочитанные данные
-        if(mb_mapping->tab_registers[REG_SREZ_Q]){
+        if(mb_mapping->tab_registers[REG_SREZ_Q] != 0 && mb_mapping->tab_registers[REG_SREZ_Q] != 1){
             mb_mapping->tab_registers[BUF_SREZ] |= 0x0100;
         } else {
             mb_mapping->tab_registers[BUF_SREZ] &= 0xFEFF;
@@ -887,10 +887,7 @@ int main(int argc, char*argv[])
             mb_mapping->tab_registers[config[i].begin()->first.as<uint16_t>() + j] = config[i].begin()->second[j].as<uint16_t>() ;
         }
     }
-    for(int i=0; i < 6; i++)
-        mb_mapping->tab_registers[BUF_SREZ+1 + i] = mb_mapping->tab_registers[0x0D40 + i];
-    for(int i=0; i < 4; i++)
-        mb_mapping->tab_registers[BUF_SREZ+7 + i] = mb_mapping->tab_registers[0x0C80 + i];
+
     mb_mapping->tab_registers[REG_END_SERV] = 0x1;
 
     std::vector<threadData> data;
